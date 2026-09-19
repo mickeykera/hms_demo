@@ -1,0 +1,1053 @@
+Server using database: /home/michael/projects/app/hospital_management/hospital.db
+(node:138038) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+Hospital Management System running on port 3000
+API Documentation available at http://localhost:3000/api-docs
+[REQUEST] 2026-09-19T16:23:47.649Z - GET /api/health {
+  requestId: 'lmgsv7nb',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:23:47.651Z - GET /api/health { requestId: 'lmgsv7nb', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T16:26:00.938Z - GET /api/health {
+  requestId: '5q6265fr',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:26:00.939Z - GET /api/health { requestId: '5q6265fr', statusCode: 200, duration: '1ms' }
+[REQUEST] 2026-09-19T16:26:36.314Z - GET /api/health {
+  requestId: 'pf80t7xu',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:26:36.315Z - GET /api/health { requestId: 'pf80t7xu', statusCode: 200, duration: '1ms' }
+[REQUEST] 2026-09-19T16:26:36.326Z - GET /api/setup-demo {
+  requestId: '117rpxz2',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:26:37.263Z - GET /api/setup-demo { requestId: '117rpxz2', statusCode: 200, duration: '937ms' }
+[REQUEST] 2026-09-19T16:26:56.637Z - POST /api/auth/login {
+  requestId: 'kzhz5xxu',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: { username: 'superadmin', password: '[REDACTED]' }
+}
+[RESPONSE] 2026-09-19T16:26:56.742Z - POST /api/auth/login { requestId: 'kzhz5xxu', statusCode: 200, duration: '105ms' }
+[REQUEST] 2026-09-19T16:27:03.447Z - POST /api/auth/login {
+  requestId: 'oyrpsa2f',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: { username: 'superadmin', password: '[REDACTED]' }
+}
+[RESPONSE] 2026-09-19T16:27:03.585Z - POST /api/auth/login { requestId: 'oyrpsa2f', statusCode: 200, duration: '138ms' }
+[REQUEST] 2026-09-19T16:27:03.595Z - GET /api/dashboards/superadmin {
+  requestId: '9kg1d0ak',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:27:03.603Z - GET /superadmin { requestId: '9kg1d0ak', statusCode: 200, duration: '8ms' }
+[REQUEST] 2026-09-19T16:27:13.377Z - POST /api/auth/login {
+  requestId: 'cnxxefx3',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: { username: 'superadmin', password: '[REDACTED]' }
+}
+[RESPONSE] 2026-09-19T16:27:13.506Z - POST /api/auth/login { requestId: 'cnxxefx3', statusCode: 200, duration: '129ms' }
+[REQUEST] 2026-09-19T16:27:13.514Z - GET /api/navigation/navigation {
+  requestId: 'u5ybix48',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:27:13.523Z - GET /navigation { requestId: 'u5ybix48', statusCode: 200, duration: '9ms' }
+[REQUEST] 2026-09-19T16:27:13.531Z - GET /api/audit/ {
+  requestId: 'l4sjw6gz',
+  ip: '::1',
+  userAgent: 'curl/8.18.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:27:13.533Z - GET / { requestId: 'l4sjw6gz', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T16:27:39.795Z - GET / {
+  requestId: 'eanhieln',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:27:39.796Z - GET / { requestId: 'eanhieln', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T16:27:39.875Z - GET /favicon.ico {
+  requestId: 'uk22thca',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:27:39.876Z - GET /favicon.ico { requestId: 'uk22thca', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T16:37:29.819Z - GET /api/auth/login {
+  requestId: 'esqjhfkq',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:37:29.819Z - GET /api/auth/login { requestId: 'esqjhfkq', statusCode: 401, duration: '0ms' }
+[REQUEST] 2026-09-19T16:37:29.851Z - GET /favicon.ico {
+  requestId: 'n1yje21t',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T16:37:29.851Z - GET /favicon.ico { requestId: 'n1yje21t', statusCode: 401, duration: '0ms' }
+[REQUEST] 2026-09-19T17:08:26.463Z - GET /api-docs/ {
+  requestId: 'dnp6v620',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:08:26.467Z - GET / { requestId: 'dnp6v620', statusCode: 200, duration: '4ms' }
+[REQUEST] 2026-09-19T17:08:26.501Z - GET /api-docs/swagger-ui.css {
+  requestId: 'dzzoton7',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[REQUEST] 2026-09-19T17:08:26.504Z - GET /api-docs/swagger-ui-standalone-preset.js {
+  requestId: '8zge1uy5',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[REQUEST] 2026-09-19T17:08:26.505Z - GET /api-docs/swagger-ui-bundle.js {
+  requestId: 's7wtpbk4',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[REQUEST] 2026-09-19T17:08:26.520Z - GET /api-docs/swagger-ui-init.js {
+  requestId: 'spcc421p',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:08:26.520Z - GET /swagger-ui-init.js { requestId: 'spcc421p', statusCode: 200, duration: '0ms' }
+[REQUEST] 2026-09-19T17:08:31.883Z - GET / {
+  requestId: 'rus7qzfi',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:08:31.884Z - GET / { requestId: 'rus7qzfi', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:08:31.931Z - GET /favicon.ico {
+  requestId: '1dy67qx2',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:08:31.932Z - GET /favicon.ico { requestId: '1dy67qx2', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:13.477Z - POST /api/auth/login {
+  requestId: '0ynxtsxw',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: { username: 'admin', password: '[REDACTED]' }
+}
+[RESPONSE] 2026-09-19T17:13:13.578Z - POST /api/auth/login { requestId: '0ynxtsxw', statusCode: 200, duration: '101ms' }
+[REQUEST] 2026-09-19T17:13:13.681Z - GET /api/admin/stats {
+  requestId: 'p3pt4x8l',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:13.686Z - GET /api/admin/stats { requestId: 'p3pt4x8l', statusCode: 404, duration: '5ms' }
+[REQUEST] 2026-09-19T17:13:13.691Z - GET /api/personnel {
+  requestId: 'khixw4rr',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:13.695Z - GET / { requestId: 'khixw4rr', statusCode: 200, duration: '4ms' }
+[REQUEST] 2026-09-19T17:13:13.698Z - GET /api/audit-logs {
+  requestId: 'p398tv7b',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:13.699Z - GET /api/audit-logs { requestId: 'p398tv7b', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:33.372Z - GET /api/patient/appointments {
+  requestId: 'tsc31u7k',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.373Z - GET /api/patient/appointments { requestId: 'tsc31u7k', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:33.374Z - GET /api/patient/prescriptions {
+  requestId: 'b9jhfh5f',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.376Z - GET /api/patient/prescriptions { requestId: 'b9jhfh5f', statusCode: 401, duration: '2ms' }
+[REQUEST] 2026-09-19T17:13:33.377Z - GET /api/patient/appointments {
+  requestId: 'ltgh5891',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.378Z - GET /api/patient/appointments { requestId: 'ltgh5891', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:33.379Z - GET /api/patient/invoices {
+  requestId: 'b0zrsu7z',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.380Z - GET /api/patient/invoices { requestId: 'b0zrsu7z', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:33.381Z - GET /api/patient/invoices {
+  requestId: 'phw6l4cj',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.382Z - GET /api/patient/invoices { requestId: 'phw6l4cj', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:33.383Z - GET /api/patient/prescriptions {
+  requestId: '6q5c4d89',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.384Z - GET /api/patient/prescriptions { requestId: '6q5c4d89', statusCode: 401, duration: '1ms' }
+[REQUEST] 2026-09-19T17:13:33.385Z - GET /api/patient/lab-results {
+  requestId: 'wswi1se0',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.387Z - GET /api/patient/lab-results { requestId: 'wswi1se0', statusCode: 401, duration: '2ms' }
+[REQUEST] 2026-09-19T17:13:33.389Z - GET /api/patient/lab-results {
+  requestId: 'sd51n38l',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:33.391Z - GET /api/patient/lab-results { requestId: 'sd51n38l', statusCode: 401, duration: '2ms' }
+[REQUEST] 2026-09-19T17:13:36.890Z - POST /api/auth/login {
+  requestId: 'od6v4iar',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: { username: 'admin', password: '[REDACTED]' }
+}
+[RESPONSE] 2026-09-19T17:13:36.984Z - POST /api/auth/login { requestId: 'od6v4iar', statusCode: 200, duration: '94ms' }
+[REQUEST] 2026-09-19T17:13:37.039Z - GET /api/admin/stats {
+  requestId: 'ri66aj88',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:37.042Z - GET /api/admin/stats { requestId: 'ri66aj88', statusCode: 404, duration: '3ms' }
+[REQUEST] 2026-09-19T17:13:37.043Z - GET /api/personnel {
+  requestId: 'z6n5lrn1',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:37.045Z - GET / { requestId: 'z6n5lrn1', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:13:37.046Z - GET /api/audit-logs {
+  requestId: 'uekcbznl',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:13:37.047Z - GET /api/audit-logs { requestId: 'uekcbznl', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:14:56.546Z - POST /api/auth/login {
+  requestId: '6ynum612',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: { username: 'doctor', password: '[REDACTED]' }
+}
+[RESPONSE] 2026-09-19T17:14:56.644Z - POST /api/auth/login { requestId: '6ynum612', statusCode: 200, duration: '98ms' }
+[REQUEST] 2026-09-19T17:14:56.697Z - GET /api/appointments {
+  requestId: 'xhader5h',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:14:56.702Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:14:56.702Z - GET /api/appointments { requestId: 'xhader5h', statusCode: 500, duration: '5ms' }
+[REQUEST] 2026-09-19T17:14:56.703Z - GET /api/clinical/consultations {
+  requestId: '3a34kftk',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:14:56.705Z - GET /consultations { requestId: '3a34kftk', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:14:56.706Z - GET /api/lab/doctor/4/pending {
+  requestId: 'q5o347lp',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:14:56.708Z - GET /api/lab/doctor/4/pending { requestId: 'q5o347lp', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:14:56.708Z - GET /api/radiology/doctor/4/pending {
+  requestId: '36str5ne',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:14:56.710Z - GET /api/radiology/doctor/4/pending { requestId: '36str5ne', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:14:56.710Z - GET /api/notifications {
+  requestId: '1626t654',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:14:56.712Z - GET / { requestId: '1626t654', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:14:56.713Z - GET /api/clinical/doctors/4/patients {
+  requestId: 'tkal2h85',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:14:56.715Z - GET /api/clinical/doctors/4/patients { requestId: 'tkal2h85', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:14:57.706Z - GET /api/appointments {
+  requestId: '7kf4laro',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:14:57.712Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:14:57.713Z - GET /api/appointments { requestId: '7kf4laro', statusCode: 500, duration: '7ms' }
+[REQUEST] 2026-09-19T17:16:00.346Z - GET /api/admin/stats {
+  requestId: '2p0yf1fu',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:00.350Z - GET /api/admin/stats { requestId: '2p0yf1fu', statusCode: 404, duration: '4ms' }
+[REQUEST] 2026-09-19T17:16:00.352Z - GET /api/personnel {
+  requestId: 'eozjwb8l',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:00.354Z - GET / { requestId: 'eozjwb8l', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:16:00.355Z - GET /api/audit-logs {
+  requestId: 'uj4n5kno',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:00.357Z - GET /api/audit-logs { requestId: 'uj4n5kno', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:16:01.338Z - GET /api/appointments {
+  requestId: 'jnljyo0w',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:16:01.345Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:16:01.346Z - GET /api/appointments { requestId: 'jnljyo0w', statusCode: 500, duration: '8ms' }
+[REQUEST] 2026-09-19T17:16:01.346Z - GET /api/clinical/doctors/4/patients {
+  requestId: 'azt1zgo5',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:01.348Z - GET /api/clinical/doctors/4/patients { requestId: 'azt1zgo5', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:16:01.349Z - GET /api/clinical/consultations {
+  requestId: 'a5povuqv',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:01.350Z - GET /consultations { requestId: 'a5povuqv', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:16:01.351Z - GET /api/lab/doctor/4/pending {
+  requestId: '8t65gmqd',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:01.352Z - GET /api/lab/doctor/4/pending { requestId: '8t65gmqd', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:16:01.356Z - GET /api/radiology/doctor/4/pending {
+  requestId: '5nhgwwqz',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:01.358Z - GET /api/radiology/doctor/4/pending { requestId: '5nhgwwqz', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:16:01.359Z - GET /api/notifications {
+  requestId: '546buruy',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:01.361Z - GET / { requestId: '546buruy', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:16:08.715Z - GET /api/appointments {
+  requestId: 'u9vav47e',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:16:08.723Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:16:08.723Z - GET /api/appointments { requestId: 'u9vav47e', statusCode: 500, duration: '8ms' }
+[REQUEST] 2026-09-19T17:16:16.398Z - GET /api/admin/stats {
+  requestId: 'btll1hxp',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:16.405Z - GET /api/admin/stats { requestId: 'btll1hxp', statusCode: 404, duration: '7ms' }
+[REQUEST] 2026-09-19T17:16:16.406Z - GET /api/audit-logs {
+  requestId: 'zqjz3ayw',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:16.408Z - GET /api/audit-logs { requestId: 'zqjz3ayw', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:16:16.409Z - GET /api/personnel {
+  requestId: 'ysoxrp47',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:16:16.411Z - GET / { requestId: 'ysoxrp47', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:16.646Z - GET /api/admin/stats {
+  requestId: 'p2p1n47s',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:16.654Z - GET /api/admin/stats { requestId: 'p2p1n47s', statusCode: 404, duration: '8ms' }
+[REQUEST] 2026-09-19T17:17:16.654Z - GET /api/personnel {
+  requestId: '409hpay0',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:16.656Z - GET / { requestId: '409hpay0', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:16.657Z - GET /api/audit-logs {
+  requestId: 'bl0ulriq',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:16.659Z - GET /api/audit-logs { requestId: 'bl0ulriq', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:17.893Z - GET /api/appointments {
+  requestId: 'eeroqbgc',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:17:17.902Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:17:17.902Z - GET /api/appointments { requestId: 'eeroqbgc', statusCode: 500, duration: '9ms' }
+[REQUEST] 2026-09-19T17:17:17.904Z - GET /api/clinical/doctors/4/patients {
+  requestId: '7kxaqrst',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:17.905Z - GET /api/clinical/doctors/4/patients { requestId: '7kxaqrst', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:17:17.906Z - GET /api/clinical/consultations {
+  requestId: '2alds6m2',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:17.908Z - GET /consultations { requestId: '2alds6m2', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:17.908Z - GET /api/lab/doctor/4/pending {
+  requestId: 'pwg2b0vt',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:17.910Z - GET /api/lab/doctor/4/pending { requestId: 'pwg2b0vt', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:17.911Z - GET /api/radiology/doctor/4/pending {
+  requestId: 'ga5mz1k0',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:17.912Z - GET /api/radiology/doctor/4/pending { requestId: 'ga5mz1k0', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:17:17.912Z - GET /api/notifications {
+  requestId: 'z2210u1p',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:17.914Z - GET / { requestId: 'z2210u1p', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:28.780Z - GET /api/admin/stats {
+  requestId: 'b4bmx1za',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:28.787Z - GET /api/admin/stats { requestId: 'b4bmx1za', statusCode: 404, duration: '7ms' }
+[REQUEST] 2026-09-19T17:17:28.792Z - GET /api/personnel {
+  requestId: 'w6sbw9s9',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:28.795Z - GET / { requestId: 'w6sbw9s9', statusCode: 200, duration: '3ms' }
+[REQUEST] 2026-09-19T17:17:28.796Z - GET /api/audit-logs {
+  requestId: '82hf4fia',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:28.798Z - GET /api/audit-logs { requestId: '82hf4fia', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:48.942Z - GET /api/admin/stats {
+  requestId: 'pc9srypa',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:48.949Z - GET /api/admin/stats { requestId: 'pc9srypa', statusCode: 404, duration: '7ms' }
+[REQUEST] 2026-09-19T17:17:48.950Z - GET /api/audit-logs {
+  requestId: 'c4as4f5q',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '20' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:48.952Z - GET /api/audit-logs { requestId: 'c4as4f5q', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:17:48.952Z - GET /api/personnel {
+  requestId: 'dfz2dx5k',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] { limit: '10' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:17:48.954Z - GET / { requestId: 'dfz2dx5k', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:19:09.652Z - GET /api/appointments {
+  requestId: '28pqdyvr',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:19:09.660Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:19:09.660Z - GET /api/appointments { requestId: '28pqdyvr', statusCode: 500, duration: '8ms' }
+[REQUEST] 2026-09-19T17:19:09.662Z - GET /api/clinical/doctors/4/patients {
+  requestId: '7zhmwweu',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:19:09.664Z - GET /api/clinical/doctors/4/patients { requestId: '7zhmwweu', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:19:09.668Z - GET /api/clinical/consultations {
+  requestId: 'j7mzqjz4',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:19:09.670Z - GET /consultations { requestId: 'j7mzqjz4', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:19:09.671Z - GET /api/lab/doctor/4/pending {
+  requestId: '77or3fah',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:19:09.672Z - GET /api/lab/doctor/4/pending { requestId: '77or3fah', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:19:09.673Z - GET /api/radiology/doctor/4/pending {
+  requestId: 'f3oqvwqa',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:19:09.674Z - GET /api/radiology/doctor/4/pending { requestId: 'f3oqvwqa', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:19:09.675Z - GET /api/notifications {
+  requestId: '0tnif1yt',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:19:09.676Z - GET / { requestId: '0tnif1yt', statusCode: 200, duration: '1ms' }
+[REQUEST] 2026-09-19T17:19:10.665Z - GET /api/appointments {
+  requestId: '5wiw3xhr',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:19:10.671Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:19:10.672Z - GET /api/appointments { requestId: '5wiw3xhr', statusCode: 500, duration: '7ms' }
+[REQUEST] 2026-09-19T17:19:39.694Z - GET /api/notifications {
+  requestId: '9rpdz9uu',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:19:39.729Z - GET / { requestId: '9rpdz9uu', statusCode: 200, duration: '35ms' }
+[REQUEST] 2026-09-19T17:20:40.517Z - GET /api/notifications {
+  requestId: '2nh4uwtr',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:20:40.525Z - GET / { requestId: '2nh4uwtr', statusCode: 200, duration: '8ms' }
+[REQUEST] 2026-09-19T17:23:36.006Z - GET /api/appointments {
+  requestId: 'z0ifv34o',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:23:36.013Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:23:36.013Z - GET /api/appointments { requestId: 'z0ifv34o', statusCode: 500, duration: '7ms' }
+[REQUEST] 2026-09-19T17:23:36.014Z - GET /api/clinical/doctors/4/patients {
+  requestId: '9mw2zwbg',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:36.016Z - GET /api/clinical/doctors/4/patients { requestId: '9mw2zwbg', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:36.018Z - GET /api/clinical/consultations {
+  requestId: '7ba0y4zn',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:36.020Z - GET /consultations { requestId: '7ba0y4zn', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:36.022Z - GET /api/lab/doctor/4/pending {
+  requestId: 'apawnlqh',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:36.023Z - GET /api/lab/doctor/4/pending { requestId: 'apawnlqh', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:23:36.024Z - GET /api/radiology/doctor/4/pending {
+  requestId: 'yd3dlrsa',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:36.025Z - GET /api/radiology/doctor/4/pending { requestId: 'yd3dlrsa', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T17:23:36.026Z - GET /api/notifications {
+  requestId: '4rw0z4yf',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:36.028Z - GET / { requestId: '4rw0z4yf', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:37.017Z - GET /api/appointments {
+  requestId: 'sigrmzrn',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:23:37.023Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:23:37.024Z - GET /api/appointments { requestId: 'sigrmzrn', statusCode: 500, duration: '7ms' }
+[REQUEST] 2026-09-19T17:23:37.693Z - GET /api/appointments {
+  requestId: 'zmngpf13',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:23:37.694Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:23:37.695Z - GET /api/appointments { requestId: 'zmngpf13', statusCode: 500, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:37.695Z - GET /api/clinical/doctors/4/patients {
+  requestId: 'lz2ro9ay',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:37.697Z - GET /api/clinical/doctors/4/patients { requestId: 'lz2ro9ay', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:37.698Z - GET /api/clinical/consultations {
+  requestId: 'fj1uzryh',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:37.700Z - GET /consultations { requestId: 'fj1uzryh', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:37.700Z - GET /api/lab/doctor/4/pending {
+  requestId: 're90va2n',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:37.702Z - GET /api/lab/doctor/4/pending { requestId: 're90va2n', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:37.702Z - GET /api/radiology/doctor/4/pending {
+  requestId: 'aw3x4sih',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:37.704Z - GET /api/radiology/doctor/4/pending { requestId: 'aw3x4sih', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:37.704Z - GET /api/notifications {
+  requestId: 'tcir0qz4',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T17:23:37.706Z - GET / { requestId: 'tcir0qz4', statusCode: 200, duration: '2ms' }
+[REQUEST] 2026-09-19T17:23:38.711Z - GET /api/appointments {
+  requestId: '77kkcxas',
+  ip: '::ffff:127.0.0.1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T17:23:38.719Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T17:23:38.720Z - GET /api/appointments { requestId: '77kkcxas', statusCode: 500, duration: '9ms' }
