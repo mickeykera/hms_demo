@@ -2,6 +2,65 @@
 
 Production-ready hospital operations platform with a Node.js/Express API and a React/Vite frontend. The system supports patient intake, clinical care, pharmacy, lab, radiology, billing, administration, and role-based access for hospital staff.
 
+## Quick Start
+
+### 1. Install dependencies
+
+From the repository root:
+
+```bash
+npm install
+npm --prefix frontend install
+```
+
+### 2. Configure the backend
+
+Create a local environment file:
+
+```bash
+cp .env.example .env
+```
+
+For local development, the defaults in `.env.example` are suitable. Make sure `CORS_ORIGINS` includes `http://localhost:5173` if you change it.
+
+### 3. Start the backend
+
+In the repository root:
+
+```bash
+npm start
+```
+
+The API starts at http://localhost:3000. On first startup, the app creates the SQLite database and schema automatically.
+
+### 4. Start the frontend
+
+Open a second terminal:
+
+```bash
+npm --prefix frontend run dev
+```
+
+Open http://localhost:5173 in your browser. The frontend uses `http://localhost:3000/api` by default.
+
+### 5. Sign in and use the HMS
+
+The login page includes selectable demo accounts. You can also enter one of these credentials manually:
+
+| Role | Username | Password |
+| --- | --- | --- |
+| Administrator | `admin` | `Admin` |
+| Physician | `doctor` | `Doctor` |
+| Receptionist | `receptionist` | `Receptionist` |
+| Nurse | `nurse` | `Nurse` |
+| Laboratory | `labtech` | `LabTech` |
+| Pharmacy | `pharmacy` | `Pharmacy` |
+| Radiology | `radiology` | `Radiology` |
+| Billing | `billing` | `Billing` |
+| Patient | `patient` | `Patient` |
+
+After signing in, use the role-specific dashboard to manage patients, appointments, clinical records, admissions, prescriptions, lab and radiology workflows, billing, pharmacy, and reports. The backend API documentation is available at http://localhost:3000/api-docs.
+
 ## Deployment Overview
 
 This application is structured as a two-part deployment:
@@ -103,6 +162,18 @@ Important notes:
 - `JWT_SECRET` is required in production.
 - `CORS_ORIGINS` should include your deployed frontend URL(s).
 - `DB_PATH` should point to a writable persistent storage location.
+
+The frontend accepts its API URL at build time:
+
+```bash
+VITE_API_BASE=https://api.your-domain.com/api npm --prefix frontend run build
+```
+
+If the frontend and API share one domain through a reverse proxy, use `/api` instead:
+
+```bash
+VITE_API_BASE=/api npm --prefix frontend run build
+```
 
 ## Local Development
 
