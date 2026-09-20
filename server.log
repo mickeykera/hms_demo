@@ -1051,3 +1051,137 @@ API Documentation available at http://localhost:3000/api-docs
   user: { id: 4, role: 'Doctor' }
 }
 [RESPONSE] 2026-09-19T17:23:38.720Z - GET /api/appointments { requestId: '77kkcxas', statusCode: 500, duration: '9ms' }
+[REQUEST] 2026-09-19T18:50:42.594Z - GET /api/appointments {
+  requestId: 'xh5r86ns',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Scheduled' },
+  body: undefined
+}
+[ERROR] 2026-09-19T18:50:42.596Z - GET /api/appointments {
+  message: 'no such column: d.first_name',
+  code: 'ERR_SQLITE_ERROR',
+  statusCode: 500,
+  stack: 'Error: no such column: d.first_name\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/modules/appointments/routes.js:31:35\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at file:///home/michael/projects/app/hospital_management/src/middleware/rbac.js:100:5\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at next (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:157:13)\n' +
+    '    at Route.dispatch (/home/michael/projects/app/hospital_management/node_modules/router/lib/route.js:117:3)\n' +
+    '    at handle (/home/michael/projects/app/hospital_management/node_modules/router/index.js:435:11)\n' +
+    '    at Layer.handleRequest (/home/michael/projects/app/hospital_management/node_modules/router/lib/layer.js:152:17)\n' +
+    '    at /home/michael/projects/app/hospital_management/node_modules/router/index.js:295:15',
+  user: { id: 4, role: 'Doctor' }
+}
+[RESPONSE] 2026-09-19T18:50:42.596Z - GET /api/appointments { requestId: 'xh5r86ns', statusCode: 500, duration: '2ms' }
+[REQUEST] 2026-09-19T18:50:42.598Z - GET /api/lab/doctor/4/pending {
+  requestId: 'v5tbdzk8',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T18:50:42.599Z - GET /api/lab/doctor/4/pending { requestId: 'v5tbdzk8', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T18:50:42.599Z - GET /api/clinical/doctors/4/patients {
+  requestId: 'u3pcns2e',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T18:50:42.600Z - GET /api/clinical/doctors/4/patients { requestId: 'u3pcns2e', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T18:50:42.601Z - GET /api/radiology/doctor/4/pending {
+  requestId: '50c78k8p',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T18:50:42.601Z - GET /api/radiology/doctor/4/pending { requestId: '50c78k8p', statusCode: 404, duration: '1ms' }
+[REQUEST] 2026-09-19T18:50:42.602Z - GET /api/clinical/consultations {
+  requestId: '81h8hyzo',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T18:50:42.602Z - GET /consultations { requestId: '81h8hyzo', statusCode: 404, duration: '0ms' }
+[REQUEST] 2026-09-19T18:50:42.603Z - GET /api/notifications {
+  requestId: 'o37lyso9',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T18:50:42.604Z - GET / { requestId: 'o37lyso9', statusCode: 200, duration: '1ms' }
+[REQUEST] 2026-09-19T19:38:40.576Z - GET /api/clinical/doctors/4/patients {
+  requestId: '6rb9zgal',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T19:38:40.584Z - GET /api/clinical/doctors/4/patients { requestId: '6rb9zgal', statusCode: 404, duration: '8ms' }
+[REQUEST] 2026-09-19T19:38:40.585Z - GET /api/clinical/consultations {
+  requestId: 'smlxxmwb',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { doctor_id: '4', status: 'Pending' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T19:38:40.588Z - GET /consultations { requestId: 'smlxxmwb', statusCode: 404, duration: '3ms' }
+[REQUEST] 2026-09-19T19:38:40.589Z - GET /api/lab/doctor/4/pending {
+  requestId: '6njsbmab',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T19:38:40.591Z - GET /api/lab/doctor/4/pending { requestId: '6njsbmab', statusCode: 404, duration: '2ms' }
+[REQUEST] 2026-09-19T19:38:40.593Z - GET /api/radiology/doctor/4/pending {
+  requestId: '3yku07jc',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-19T19:38:40.596Z - GET /api/radiology/doctor/4/pending { requestId: '3yku07jc', statusCode: 404, duration: '3ms' }
+[REQUEST] 2026-09-19T19:38:40.597Z - GET /api/notifications {
+  requestId: '9g3i0mqu',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0',
+  user: null,
+  query: [Object: null prototype] { unread: 'true' },
+  body: undefined
+}
+[RESPONSE] 2026-09-19T19:38:40.600Z - GET / { requestId: '9g3i0mqu', statusCode: 200, duration: '3ms' }
+[REQUEST] 2026-09-20T08:38:49.464Z - GET / {
+  requestId: 'kn7ij300',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-20T08:38:49.464Z - GET / { requestId: 'kn7ij300', statusCode: 401, duration: '0ms' }
+[REQUEST] 2026-09-20T08:38:49.518Z - GET /favicon.ico {
+  requestId: 'xenhzylz',
+  ip: '::1',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.137.0 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36',
+  user: null,
+  query: [Object: null prototype] {},
+  body: undefined
+}
+[RESPONSE] 2026-09-20T08:38:49.519Z - GET /favicon.ico { requestId: 'xenhzylz', statusCode: 401, duration: '1ms' }
