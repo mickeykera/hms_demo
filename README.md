@@ -41,7 +41,21 @@ Open a second terminal:
 npm --prefix frontend run dev
 ```
 
-Open http://localhost:5173 in your browser. The frontend uses `http://localhost:3000/api` by default.
+Open http://localhost:5173 on the server itself. The frontend dev server also listens on the server's LAN address, so other devices can use `http://SERVER_IP:5173`.
+
+For another device on the intranet, set the API URL to the server's LAN address before starting the frontend:
+
+```bash
+VITE_API_BASE=http://SERVER_IP:3000/api npm --prefix frontend run dev -- --host 0.0.0.0
+```
+
+Replace `SERVER_IP` with the hospital server's private address, such as `192.168.1.50`. Set the backend CORS origin to match the frontend URL:
+
+```bash
+CORS_ORIGINS=http://192.168.1.50:5173
+```
+
+Then staff on the same network can open `http://192.168.1.50:5173` in their browsers.
 
 ### 5. Sign in and use the HMS
 
