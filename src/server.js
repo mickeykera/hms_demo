@@ -3,6 +3,13 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import swaggerUi from 'swagger-ui-express';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import receptionRoutes from './modules/reception/routes.js';
 import clinicalRoutes from './modules/clinical/routes.js';
 import billingRoutes from './modules/billing/routes.js';
@@ -68,15 +75,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'operational', timestamp: new Date().toISOString(), db: getDb().prepare('SELECT 1').get() ? 'connected' : 'error' });
 });
 
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Hospital Management System API',
-    status: 'operational',
-    frontend: 'http://localhost:5173',
-    docs: `http://localhost:${PORT}/api-docs`,
-  });
-});
-
 app.post('/api/setup-demo', asyncHandler(async (req, res) => {
   seedDemoData();
   return res.json({ success: true, message: 'Demo users and beds created' });
@@ -110,6 +108,23 @@ app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => 
   });
 }));
 
+const frontendDist = join(__dirname, '..', 'frontend', 'dist');
+if (existsSync(frontendDist)) {
+  app.use(express.static(frontendDist, { index: false }));
+  app.get(/^(?!\/api\/).*/, (req, res, next) => {
+    res.sendFile(join(frontendDist, 'index.html'), (err) => (err ? next(err) : undefined));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'Hospital Management System API',
+      status: 'operational',
+      message: 'Frontend bundle not found. Run "npm run build" to generate frontend/dist.',
+      docs: '/api-docs',
+    });
+  });
+}
+
 app.use(authenticate);
 
 // Core module routes
@@ -140,7 +155,7 @@ app.use('/api/dashboards', dashboardsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/navigation', navigationRoutes);
 
-if (process.env.NODE_ENV !== 'production') seedDemoData();
+if (process.env.SEED_DEMO_DATA === 'true') seedDemoData();
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -1,0 +1,17 @@
+node_modules
+frontend/node_modules
+frontend/dist
+.git
+*.db
+*.db-shm
+*.db-wal
+# Exclude the root secret, but KEEP frontend/.env.production: it sets
+# VITE_API_BASE=/api and is required for the in-image build to target the
+# same-origin API instead of falling back to http://localhost:3000/api.
+.env
+!frontend/.env.production
+uploads
+*.log
+.vscode
+.idea
+README.md

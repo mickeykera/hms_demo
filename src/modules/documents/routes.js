@@ -11,7 +11,8 @@ import fs from 'node:fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const uploadDir = join(__dirname, '..', '..', '..', 'uploads', 'documents');
+const uploadDir = process.env.UPLOAD_DIR
+  || join(__dirname, '..', '..', '..', 'uploads', 'documents');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -47,6 +48,25 @@ const documentSchema = z.object({
   access_level: z.enum(['Private', 'Department', 'Hospital', 'Patient']).default('Department'),
   parent_document_id: z.number().int().positive().optional(),
 });
+
+function canAccessDocument(document, user) {
+  if (user.role === 'SuperAdmin' || user.role === 'Admin') return true;
+
+  if (user.role === 'Patient') {
+    return document.access_level === 'Patient' && user.patient_id === document.patient_id;
+  }
+
+  if (document.access_level === 'Private') {
+    return document.uploaded_by === user.id;
+  }
+
+  if (document.access_level === 'Department') {
+    const personnel = db.getPersonnelByUserId(user.id);
+    return personnel?.department_id === document.department_id;
+  }
+
+  return true;
+}
 
 // Upload document
 router.post('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Receptionist'), upload.single('file'), (req, res) => {
@@ -102,17 +122,7 @@ router.get('/:id', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmac
     const document = db.getDocumentById(parseInt(req.params.id));
     if (!document) return res.status(404).json({ error: 'Document not found' });
     
-    // Check access based on access_level
-    if (document.access_level === 'Private' && document.uploaded_by !== req.user.id && req.user.role !== 'SuperAdmin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    if (document.access_level === 'Department') {
-      const personnel = db.getPersonnelByUserId(req.user.id);
-      if (personnel?.department_id !== document.department_id && req.user.role !== 'SuperAdmin' && req.user.role !== 'Admin') {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-    }
-    if (document.access_level === 'Patient' && req.user.role !== 'Patient' && req.user.role !== 'SuperAdmin' && req.user.role !== 'Admin') {
+    if (!canAccessDocument(document, req.user)) {
       return res.status(403).json({ error: 'Access denied' });
     }
     
@@ -127,6 +137,10 @@ router.get('/:id/download', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology',
   try {
     const document = db.getDocumentById(parseInt(req.params.id));
     if (!document) return res.status(404).json({ error: 'Document not found' });
+
+    if (!canAccessDocument(document, req.user)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
     if (!fs.existsSync(document.file_path)) {
       return res.status(404).json({ error: 'File not found on disk' });

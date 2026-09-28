@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: hms-demo
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DB_PATH
+        value: /data/hospital.db
+      - key: UPLOAD_DIR
+        value: /data/uploads/documents
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+    disk:
+      name: hms-data
+      mountPath: /data
+      sizeGB: 1

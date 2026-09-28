@@ -106,7 +106,7 @@ Browser
 
 ## Stack
 
-- Node.js 18+
+- Node.js 22.5+
 - Express 5
 - SQLite via node:sqlite
 - React 19
@@ -145,7 +145,7 @@ Browser
 
 ## Prerequisites
 
-- Node.js 18 or newer
+- Node.js 22.5 or newer
 - npm 9+
 - Access to a host or VM with Node installed for deployment
 - Optional: Nginx or any reverse proxy for serving the frontend
@@ -169,6 +169,7 @@ JWT_SECRET=replace_with_a_strong_secret
 CORS_ORIGINS=https://your-frontend-domain.com,https://www.your-frontend-domain.com
 DB_PATH=/var/app/hospital_management/hospital.db
 NODE_ENV=production
+ENABLE_API_DOCS=false
 ```
 
 Important notes:
@@ -176,6 +177,7 @@ Important notes:
 - `JWT_SECRET` is required in production.
 - `CORS_ORIGINS` should include your deployed frontend URL(s).
 - `DB_PATH` should point to a writable persistent storage location.
+- `ENABLE_API_DOCS` should remain `false` unless Swagger is protected by your reverse proxy.
 
 The frontend accepts its API URL at build time:
 
@@ -221,11 +223,20 @@ This runs the root build script and compiles the React app for deployment.
 
 ## Deploying the Backend
 
+On the production server, install only locked dependencies and do not use the Vite development server:
+
+```bash
+npm ci
+npm --prefix frontend ci
+npm run build
+NODE_ENV=production npm start
+```
+
 Run the server in production with a process manager such as PM2:
 
 ```bash
 npm install --global pm2
-NODE_ENV=production JWT_SECRET=your_secret PORT=3000 pm2 start src/server.js --name hospital-api
+pm2 start src/server.js --name hospital-api --node-args="--env-file=.env"
 ```
 
 To monitor:
@@ -298,7 +309,9 @@ The application uses SQLite, which is a good fit for small to medium deployments
 
 ## Demo Data and Seed Setup
 
-The app can auto-seed demo data in non-production environments. You can trigger this manually:
+The app seeds demo data when `SEED_DEMO_DATA=true`. This is independent of `NODE_ENV`, so a hosted demo can run in production mode and still populate itself. Seeding is idempotent, so it is safe to leave enabled. For a real hospital deployment, set `SEED_DEMO_DATA=false` and remove the `/api/setup-demo` endpoints. Do not copy demo credentials into a live hospital deployment.
+
+In a local development environment, you can trigger demo setup manually:
 
 ```bash
 curl http://localhost:3000/api/setup-demo
@@ -329,8 +342,61 @@ Before production deployment, confirm:
 - CORS is restricted to trusted origins
 - database and uploads are on protected storage
 - admin credentials are not left at default values
-- demo seed endpoints are disabled in production
+- `NODE_ENV=production` is set on the backend
+- demo seed endpoints and demo credentials are disabled in production
+- Swagger is disabled or protected in production
 - logs and errors do not leak sensitive details
+
+## Demo Deployment (single service)
+
+The API and the built frontend ship as **one** Express process, so a demo needs only one
+host and one domain. The server serves `frontend/dist` and falls back to `index.html` for
+client-side routes, which means `VITE_API_BASE=/api` works unchanged.
+
+State lives in two places that must be on a persistent volume: `DB_PATH` (SQLite) and
+`UPLOAD_DIR` (multer document uploads).
+
+### Docker
+
+```bash
+docker build -t hms-demo .
+docker run -d -p 3000:3000 \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -e SEED_DEMO_DATA=true \
+  -v hms-data:/data \
+  --name hms-demo hms-demo
+```
+
+### Render
+
+`render.yaml` provisions a Docker web service with a 1GB disk mounted at `/data`.
+Push the repo, create a Blueprint from it, and set `CORS_ORIGINS` to the assigned URL.
+
+### Other hosts
+
+The image is portable. On Railway, Fly.io, Fly or any VPS, attach a volume at `/data` and
+set the same environment variables. On a free tier with no volume, SQLite resets on every
+redeploy, which is acceptable for a throwaway demo.
+
+### Required environment
+
+| Variable | Purpose |
+| --- | --- |
+| `JWT_SECRET` | Required in production. The app refuses to boot without it. |
+| `DB_PATH` | SQLite file location. Point at the volume. |
+| `UPLOAD_DIR` | Document upload directory. Point at the volume. |
+| `SEED_DEMO_DATA` | `true` seeds demo users, roles, departments, and beds on boot. |
+| `CORS_ORIGINS` | Comma-separated allowed origins. Same-origin serving means this is optional. |
+
+### Demo credentials
+
+Password equals the username in each case (`doctor` / `Doctor`, `superadmin` / `SuperAdmin`).
+Ten roles exist: `superadmin`, `admin`, `receptionist`, `doctor`, `nurse`, `labtech`,
+`pharmacy`, `radiology`, `billing`, `patient`. Swagger UI is at `/api-docs`.
+
+## Security and Compliance Notes
+
+This software still requires an organization-level security, privacy, backup, access-control, incident-response, and regulatory review before handling real patient data. Passing the application test suite does not by itself establish HIPAA or other regulatory compliance.
 
 ## License
 
