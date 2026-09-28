@@ -353,8 +353,25 @@ The API and the built frontend ship as **one** Express process, so a demo needs 
 host and one domain. The server serves `frontend/dist` and falls back to `index.html` for
 client-side routes, which means `VITE_API_BASE=/api` works unchanged.
 
-State lives in two places that must be on a persistent volume: `DB_PATH` (SQLite) and
-`UPLOAD_DIR` (multer document uploads).
+State lives in two places: `DB_PATH` (SQLite) and `UPLOAD_DIR` (multer document uploads).
+Both default to `/data` inside the container.
+
+### Free hosting on Render
+
+`render.yaml` provisions a **Free** Docker web service. No credit card, and `JWT_SECRET` is
+generated automatically, so a Blueprint deploy needs no manual steps:
+
+1. Connect the GitHub repo in the Render dashboard.
+2. **New > Blueprint**, select the repo. Render reads `render.yaml` and creates the service.
+3. Deploy.
+
+The Free plan has an **ephemeral filesystem**: `/data` is wiped on every redeploy, restart,
+and spin-down. This is acceptable for a demo because `SEED_DEMO_DATA=true` re-seeds the
+database on every boot, so visitors always get a populated system. Any records created in
+the UI are lost when the instance cycles. Persistent disks require a paid plan.
+
+Free instances also spin down after 15 minutes idle and take roughly a minute to wake, so
+the first visitor to an idle instance sees a loading page.
 
 ### Docker
 
@@ -363,28 +380,33 @@ docker build -t hms-demo .
 docker run -d -p 3000:3000 \
   -e JWT_SECRET="$(openssl rand -hex 32)" \
   -e SEED_DEMO_DATA=true \
-  -v hms-data:/data \
   --name hms-demo hms-demo
 ```
 
-### Render
+Omit the volume and the database resets whenever the container is recreated. Add
+`-v hms-data:/data` to keep data across recreations:
 
-`render.yaml` provisions a Docker web service with a 1GB disk mounted at `/data`.
-Push the repo, create a Blueprint from it, and set `CORS_ORIGINS` to the assigned URL.
+```bash
+docker run -d -p 3000:3000 -v hms-data:/data \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -e SEED_DEMO_DATA=true --name hms-demo hms-demo
+```
+
+`docker-entrypoint.sh` creates and chowns `/data` at startup, then re-execs the server as
+the unprivileged `node` user, because a mounted volume is normally owned by root.
 
 ### Other hosts
 
-The image is portable. On Railway, Fly.io, Fly or any VPS, attach a volume at `/data` and
-set the same environment variables. On a free tier with no volume, SQLite resets on every
-redeploy, which is acceptable for a throwaway demo.
+The image is portable. On Railway, Fly.io or any VPS, attach a volume at `/data` and set
+the same environment variables.
 
 ### Required environment
 
 | Variable | Purpose |
 | --- | --- |
 | `JWT_SECRET` | Required in production. The app refuses to boot without it. |
-| `DB_PATH` | SQLite file location. Point at the volume. |
-| `UPLOAD_DIR` | Document upload directory. Point at the volume. |
+| `DB_PATH` | SQLite file location. Defaults to `/data/hospital.db`. |
+| `UPLOAD_DIR` | Document upload directory. Defaults to `/data/uploads/documents`. |
 | `SEED_DEMO_DATA` | `true` seeds demo users, roles, departments, and beds on boot. |
 | `CORS_ORIGINS` | Comma-separated allowed origins. Same-origin serving means this is optional. |
 

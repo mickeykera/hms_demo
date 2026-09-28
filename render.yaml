@@ -1,8 +1,17 @@
+# Free tier: no credit card, no persistent disk.
+#
+# Render's Free plan has an ephemeral filesystem, so /data is wiped on every
+# redeploy, restart, and spin-down. That is fine for a demo because
+# SEED_DEMO_DATA=true re-seeds the database on every boot, so visitors always
+# get a freshly populated system. Records do not survive a redeploy.
+#
+# A persistent disk is only available on paid plans; adding a `disk:` block
+# here makes Blueprint creation fail on the Free plan.
 services:
   - type: web
     name: hms-demo
     runtime: docker
-    plan: starter
+    plan: free
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -15,11 +24,5 @@ services:
         value: /data/uploads/documents
       - key: SEED_DEMO_DATA
         value: "true"
-      - key: CORS_ORIGINS
-        sync: false
       - key: JWT_SECRET
         generateValue: true
-    disk:
-      name: hms-data
-      mountPath: /data
-      sizeGB: 1
