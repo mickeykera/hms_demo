@@ -45,7 +45,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'test-secret');
 if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET must be set in production');
+  throw new Error(
+    'JWT_SECRET must be set when NODE_ENV=production.\n' +
+    'Set it in your host\'s environment (on Render: Service > Environment).\n' +
+    'Generate one with: openssl rand -hex 32'
+  );
 }
 
 const corsOptions = {
