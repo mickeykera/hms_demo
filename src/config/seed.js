@@ -14,6 +14,63 @@ const demoUsers = [
   { username: 'patient', password: 'Patient', role: 'Patient', department: null },
 ];
 
+// Demo credentials are intentionally predictable in development (password ==
+// capitalised username) because that is what the README documents and what the
+// local demo expects.
+//
+// That is unacceptable on a publicly reachable deployment: anyone who types
+// "admin" / "Admin" would hold SuperAdmin on a live instance. So in production
+// the password must be supplied explicitly via SEED_DEMO_PASSWORD, and the
+// predictable defaults are refused outright.
+//
+// The value is never logged, never written to the repository, and never
+// derived from the username.
+const DEFAULT_DEMO_PASSWORDS = new Set(demoUsers.map((u) => u.password));
+
+/**
+ * Resolve the password to use for a demo account.
+ *
+ * Reads process.env on every call (not at module load) so tests can exercise
+ * both the development and production paths in one process.
+ *
+ * @throws if production seeding is requested without a safe password.
+ */
+function resolveDemoPassword() {
+  if (process.env.NODE_ENV !== 'production') {
+    // Development/test: keep the documented demo credentials.
+    return null; // signals "use the per-user default"
+  }
+
+  const supplied = process.env.SEED_DEMO_PASSWORD;
+
+  if (!supplied) {
+    throw new Error(
+      'SEED_DEMO_PASSWORD must be set when NODE_ENV=production.\n' +
+      "Demo accounts would otherwise be seeded with predictable credentials " +
+      "(username as password), giving anyone who can reach the site full access.\n" +
+      'Set it in your host\'s environment (on Render: Service > Environment).\n' +
+      'Generate one with: openssl rand -hex 24'
+    );
+  }
+
+  if (DEFAULT_DEMO_PASSWORDS.has(supplied)) {
+    throw new Error(
+      'SEED_DEMO_PASSWORD must not be one of the default demo passwords.\n' +
+      'That is exactly the credential this guard exists to prevent. ' +
+      'Generate one with: openssl rand -hex 24'
+    );
+  }
+
+  if (supplied.length < 16) {
+    throw new Error(
+      'SEED_DEMO_PASSWORD must be at least 16 characters long. ' +
+      'Generate one with: openssl rand -hex 24'
+    );
+  }
+
+  return supplied;
+}
+
 const departments = [
   { name: 'Administration', code: 'ADMIN', description: 'Hospital Administration' },
   { name: 'Cardiology', code: 'CARD', description: 'Cardiology Department' },
@@ -266,8 +323,13 @@ export function seedDemoData() {
   }
 
   // Seed demo users
+  // Resolve once per seeding run so a production misconfiguration fails fast,
+  // before any user row is written.
+  const productionPassword = resolveDemoPassword();
+
   for (const user of demoUsers) {
-    const passwordHash = bcrypt.hashSync(user.password, 10);
+    const effectivePassword = productionPassword || user.password;
+    const passwordHash = bcrypt.hashSync(effectivePassword, 10);
     const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(user.username);
 
     if (existing) {

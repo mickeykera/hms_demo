@@ -170,6 +170,8 @@ CORS_ORIGINS=https://your-frontend-domain.com,https://www.your-frontend-domain.c
 DB_PATH=/var/app/hospital_management/hospital.db
 NODE_ENV=production
 ENABLE_API_DOCS=false
+# Only needed when SEED_DEMO_DATA=true:
+SEED_DEMO_PASSWORD=replace_with_a_strong_secret
 ```
 
 Important notes:
@@ -178,6 +180,12 @@ Important notes:
 - `CORS_ORIGINS` should include your deployed frontend URL(s).
 - `DB_PATH` should point to a writable persistent storage location.
 - `ENABLE_API_DOCS` should remain `false` unless Swagger is protected by your reverse proxy.
+- `SEED_DEMO_PASSWORD` is **required** whenever `NODE_ENV=production` and
+  `SEED_DEMO_DATA=true`. In production the seeder refuses to run without it, and
+  also refuses it if it equals one of the default demo passwords (which are the
+  capitalised username) or is shorter than 16 characters. Generate a value with
+  `openssl rand -hex 24`. Never commit it — on Render use
+  `generateValue: true`, which keeps the secret out of git.
 
 The frontend accepts its API URL at build time:
 

@@ -26,3 +26,9 @@ services:
         value: "true"
       - key: JWT_SECRET
         generateValue: true
+      # Required: the password used to seed the demo accounts in production.
+      # src/config/seed.js refuses to run when NODE_ENV=production without it,
+      # and also refuses it if it equals one of the default demo passwords
+      # (username as password). generateValue keeps the secret out of git.
+      - key: SEED_DEMO_PASSWORD
+        generateValue: true
