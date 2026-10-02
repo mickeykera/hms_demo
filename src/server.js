@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -182,7 +183,29 @@ if (!process.env.VITEST) {
   await runMigrations();
 }
 
-if (process.env.SEED_DEMO_DATA === 'true') seedDemoData();
+if (process.env.SEED_DEMO_DATA === 'true') {
+  seedDemoData();
+
+  // The base seed above only covers users, departments, roles, wards, beds and
+  // medications. Everything the operational dashboards read from -- suppliers,
+  // purchase orders, ambulances, dispatches, system settings and the four HR
+  // tables -- is *created* by migration 20261002 but never *populated*, so on a
+  // fresh deploy those tabs would render empty (verified: every one of those
+  // tables had 0 rows after a cold boot).
+  //
+  // scripts/seedDemoData.js is a CLI script that opens its own connection, so
+  // it is invoked as a child process rather than imported. It is idempotent, and
+  // failures are logged rather than fatal: a demo dataset is not a good reason
+  // to refuse to serve.
+  try {
+    execFileSync(process.execPath, [join(__dirname, '..', 'scripts', 'seedDemoData.js')], {
+      stdio: 'inherit',
+      env: { ...process.env },
+    });
+  } catch (err) {
+    console.error('Operational demo data seeding failed:', err.message);
+  }
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);
