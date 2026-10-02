@@ -27,7 +27,7 @@ const updateResultSchema = z.object({
 });
 
 // Create department request (Doctors, Nurses, Emergency)
-router.post('/', authorize('Doctor', 'Nurse', 'Emergency', 'Admin', 'SuperAdmin'), validate('request'), (req, res) => {
+router.post('/', authorize('Doctor', 'Nurse', 'Emergency', 'Admin', 'SuperAdmin'), validate('request'), (req, res, next) => {
   try {
     const db2 = db.getDb();
     
@@ -89,12 +89,14 @@ router.post('/', authorize('Doctor', 'Nurse', 'Emergency', 'Admin', 'SuperAdmin'
     
     res.status(201).json({ success: true, request });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get requests (with filters)
-router.get('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Emergency'), (req, res) => {
+router.get('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Emergency'), (req, res, next) => {
   try {
     const filters = {
       patient_id: req.query.patient_id ? parseInt(req.query.patient_id) : undefined,
@@ -124,23 +126,27 @@ router.get('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy',
     const requests = db.getDepartmentRequests(filters);
     res.json({ requests });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get request by ID
-router.get('/:id', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Emergency'), (req, res) => {
+router.get('/:id', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Emergency'), (req, res, next) => {
   try {
     const request = db.getDepartmentRequestById(parseInt(req.params.id));
     if (!request) return res.status(404).json({ error: 'Request not found' });
     res.json({ request });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Update request status (receiving department staff, admin)
-router.put('/:id/status', authorize('LabTech', 'Radiology', 'Pharmacy', 'Doctor', 'Nurse', 'Admin', 'SuperAdmin'), validate('updateStatus'), (req, res) => {
+router.put('/:id/status', authorize('LabTech', 'Radiology', 'Pharmacy', 'Doctor', 'Nurse', 'Admin', 'SuperAdmin'), validate('updateStatus'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const request = db.getDepartmentRequestById(id);
@@ -210,12 +216,14 @@ router.put('/:id/status', authorize('LabTech', 'Radiology', 'Pharmacy', 'Doctor'
     
     res.json({ success: true, request: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Update request result (receiving department staff)
-router.put('/:id/result', authorize('LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin'), validate('updateResult'), (req, res) => {
+router.put('/:id/result', authorize('LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin'), validate('updateResult'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const request = db.getDepartmentRequestById(id);
@@ -255,17 +263,21 @@ router.put('/:id/result', authorize('LabTech', 'Radiology', 'Pharmacy', 'Admin',
     
     res.json({ success: true, request: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get requests for a specific patient
-router.get('/patient/:patientId', authorize('Doctor', 'Nurse', 'Admin', 'SuperAdmin'), checkPatientAccess, (req, res) => {
+router.get('/patient/:patientId', authorize('Doctor', 'Nurse', 'Admin', 'SuperAdmin'), checkPatientAccess, (req, res, next) => {
   try {
     const requests = db.getDepartmentRequests({ patient_id: parseInt(req.params.patientId), limit: 100 });
     res.json({ requests });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

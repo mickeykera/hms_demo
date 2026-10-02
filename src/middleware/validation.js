@@ -416,8 +416,11 @@ export function validate(schemaName) {
 
     const result = schema.safeParse(req.body);
     if (!result.success) {
+      // Match the error shape produced by errorHandler so every 4xx carries a
+      // machine-readable `code` alongside the human message.
       return res.status(400).json({
         error: 'Validation failed',
+        code: 'VALIDATION_ERROR',
         details: result.error.flatten().fieldErrors,
       });
     }

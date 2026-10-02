@@ -8,7 +8,7 @@ const router = Router();
 const ED = ['Admin', 'SuperAdmin', 'Receptionist', 'Nurse', 'Doctor'];
 
 // ---------- Ambulances ----------
-router.get('/ambulances', authorize(ED), (req, res) => {
+router.get('/ambulances', authorize(ED), (req, res, next) => {
   try {
     const fleet = db.getDb().prepare(`
       SELECT a.*,
@@ -19,11 +19,13 @@ router.get('/ambulances', authorize(ED), (req, res) => {
     `).all();
     res.json({ ambulances: fleet });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/ambulances', authorize(['Admin', 'SuperAdmin']), validate('ambulance'), (req, res) => {
+router.post('/ambulances', authorize(['Admin', 'SuperAdmin']), validate('ambulance'), (req, res, next) => {
   try {
     const v = req.validated;
     const r = db.getDb().prepare(`
@@ -35,12 +37,14 @@ router.post('/ambulances', authorize(['Admin', 'SuperAdmin']), validate('ambulan
       ambulance: db.getDb().prepare('SELECT * FROM ambulances WHERE id = ?').get(r.lastInsertRowid),
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // ---------- Dispatches ----------
-router.get('/dispatches', authorize(ED), (req, res) => {
+router.get('/dispatches', authorize(ED), (req, res, next) => {
   try {
     const { status } = req.query;
     const dispatches = db.getDb().prepare(`
@@ -53,11 +57,13 @@ router.get('/dispatches', authorize(ED), (req, res) => {
     `).all(status || null, status || null);
     res.json({ dispatches });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/dispatches', authorize(ED), validate('dispatch'), (req, res) => {
+router.post('/dispatches', authorize(ED), validate('dispatch'), (req, res, next) => {
   try {
     const v = req.validated;
 
@@ -95,7 +101,9 @@ router.post('/dispatches', authorize(ED), validate('dispatch'), (req, res) => {
       dispatch: db.getDb().prepare('SELECT * FROM dispatches WHERE id = ?').get(r.lastInsertRowid),
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -103,7 +111,7 @@ router.post('/dispatches', authorize(ED), validate('dispatch'), (req, res) => {
  * Advance a dispatch. Completing or cancelling releases the unit so it
  * becomes dispatchable again.
  */
-router.put('/dispatches/:id/status', authorize(ED), validate('dispatchStatus'), (req, res) => {
+router.put('/dispatches/:id/status', authorize(ED), validate('dispatchStatus'), (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const d = db.getDb().prepare('SELECT * FROM dispatches WHERE id = ?').get(id);
@@ -126,7 +134,9 @@ router.put('/dispatches/:id/status', authorize(ED), validate('dispatchStatus'), 
 
     res.json({ success: true, dispatch: db.getDb().prepare('SELECT * FROM dispatches WHERE id = ?').get(id) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -134,7 +144,7 @@ router.put('/dispatches/:id/status', authorize(ED), validate('dispatchStatus'), 
  * ED statistics. Derived from the visits table rather than stored, so the
  * numbers can never drift from the actual queue.
  */
-router.get('/statistics', authorize(ED), (req, res) => {
+router.get('/statistics', authorize(ED), (req, res, next) => {
   try {
     const totals = db.getDb().prepare(`
       SELECT
@@ -173,18 +183,22 @@ router.get('/statistics', authorize(ED), (req, res) => {
 
     res.json({ totals, byPriority, byType, beds, fleet });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 /** Bed resources for the ED "Resource management" tab. */
-router.get('/resources', authorize(ED), (req, res) => {
+router.get('/resources', authorize(ED), (req, res, next) => {
   try {
     const beds = db.getDb().prepare('SELECT * FROM ward_beds ORDER BY ward_name, bed_number').all();
     const ambulances = db.getDb().prepare('SELECT * FROM ambulances ORDER BY unit_number').all();
     res.json({ beds, ambulances });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

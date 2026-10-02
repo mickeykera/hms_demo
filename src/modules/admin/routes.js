@@ -65,7 +65,9 @@ router.get(
         critical_results: criticalResults,
       });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      // Let the central error handler classify this (409 for UNIQUE,
+      // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+      next(e);
     }
   }
 );
@@ -78,18 +80,20 @@ router.get(
  * admin-level role; writes are SuperAdmin only, since these values affect
  * hospital-wide behaviour.
  */
-router.get('/settings', authorize(['Admin', 'SuperAdmin']), (req, res) => {
+router.get('/settings', authorize(['Admin', 'SuperAdmin']), (req, res, next) => {
   try {
     const settings = db.getDb().prepare(
       'SELECT key, value, category, updated_at FROM system_settings ORDER BY category, key'
     ).all();
     res.json({ settings });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.put('/settings/:key', authorize(['SuperAdmin']), (req, res) => {
+router.put('/settings/:key', authorize(['SuperAdmin']), (req, res, next) => {
   try {
     const key = String(req.params.key);
     const { value, category } = req.body;
@@ -107,7 +111,9 @@ router.put('/settings/:key', authorize(['SuperAdmin']), (req, res) => {
       setting: db.getDb().prepare('SELECT key, value, category, updated_at FROM system_settings WHERE key = ?').get(key),
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

@@ -5,15 +5,16 @@ import * as db from '../../models/index.js';
 
 const router = Router();
 
-router.post('/schedule', authorize(['Doctor', 'Admin']), validate('orSchedule'), (req, res) => {
+router.post('/schedule', authorize(['Doctor', 'Admin']), validate('orSchedule'), (req, res, next) => {
   try {
     const patient = db.getPatientById(req.validated.patient_id);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
     const result = db.createORSchedule({ ...req.validated, prep_complete: 0 });
     res.status(201).json({ success: true, schedule_id: result.lastInsertRowid });
   } catch (e) {
-    console.error('OR Schedule error:', e);
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

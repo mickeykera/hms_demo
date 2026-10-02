@@ -64,19 +64,39 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
-  if (err.code === 'SQLITE_CONSTRAINT') {
-    if (err.message.includes('UNIQUE constraint failed')) {
+  // node:sqlite does not set code === 'SQLITE_CONSTRAINT'. It reports a generic
+  // 'ERR_SQLITE_ERROR' plus numeric errcode (SQLITE_CONSTRAINT is 2067) and an
+  // errstr of 'constraint failed', so the informative signal is in the message.
+  // Matching on the old code alone meant every constraint violation escaped as
+  // a bare 500.
+  if (err.code === 'ERR_SQLITE_ERROR' || err.code === 'SQLITE_CONSTRAINT' || err.errcode === 2067) {
+    const message = err.message || '';
+    if (message.includes('UNIQUE constraint failed')) {
       return res.status(409).json({
         error: 'Duplicate entry',
         code: 'DUPLICATE_ENTRY',
       });
     }
-    if (err.message.includes('FOREIGN KEY constraint failed')) {
+    if (message.includes('FOREIGN KEY constraint failed')) {
       return res.status(400).json({
         error: 'Referenced resource does not exist',
         code: 'FOREIGN_KEY_VIOLATION',
       });
     }
+    if (message.includes('NOT NULL constraint failed') || message.includes('CHECK constraint failed')) {
+      return res.status(400).json({
+        error: 'Request violates a database constraint',
+        code: 'CONSTRAINT_VIOLATION',
+      });
+    }
+  }
+
+  if (err.code === 'SQLITE_CONSTRAINT' || err.errstr === 'constraint failed') {
+    // A constraint error we did not classify above.
+    return res.status(400).json({
+      error: 'Request violates a database constraint',
+      code: 'CONSTRAINT_VIOLATION',
+    });
   }
 
   return res.status(500).json({

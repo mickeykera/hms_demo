@@ -26,17 +26,19 @@ const rolePermissionSchema = z.object({
 });
 
 // Get all roles
-router.get('/roles', authorize('Admin', 'SuperAdmin', 'HR'), (req, res) => {
+router.get('/roles', authorize('Admin', 'SuperAdmin', 'HR'), (req, res, next) => {
   try {
     const roles = db.getAllRoles();
     res.json({ roles });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get role by ID
-router.get('/roles/:id', authorize('Admin', 'SuperAdmin', 'HR'), (req, res) => {
+router.get('/roles/:id', authorize('Admin', 'SuperAdmin', 'HR'), (req, res, next) => {
   try {
     const role = db.getRoleById(parseInt(req.params.id));
     if (!role) return res.status(404).json({ error: 'Role not found' });
@@ -45,12 +47,14 @@ router.get('/roles/:id', authorize('Admin', 'SuperAdmin', 'HR'), (req, res) => {
     const permissions = db.getPermissionsForRoleName(role.name);
     res.json({ role, permissions });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Create role
-router.post('/roles', authorize('Admin', 'SuperAdmin'), validate('role'), (req, res) => {
+router.post('/roles', authorize('Admin', 'SuperAdmin'), validate('role'), (req, res, next) => {
   try {
     const existing = db.getRoleByName(req.validated.name);
     if (existing) return res.status(409).json({ error: 'Role already exists' });
@@ -59,12 +63,14 @@ router.post('/roles', authorize('Admin', 'SuperAdmin'), validate('role'), (req, 
     const role = db.getRoleById(result.lastInsertRowid);
     res.status(201).json({ success: true, role });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Update role
-router.put('/roles/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.put('/roles/:id', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const role = db.getRoleById(id);
@@ -78,32 +84,38 @@ router.put('/roles/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
     const updated = db.getRoleById(id);
     res.json({ success: true, role: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get all permissions
-router.get('/permissions', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.get('/permissions', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const permissions = db.getAllPermissions();
     res.json({ permissions });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get permissions by category
-router.get('/permissions/category/:category', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.get('/permissions/category/:category', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const permissions = db.getPermissionsByCategory(req.params.category);
     res.json({ permissions });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Create permission
-router.post('/permissions', authorize('Admin', 'SuperAdmin'), validate('permission'), (req, res) => {
+router.post('/permissions', authorize('Admin', 'SuperAdmin'), validate('permission'), (req, res, next) => {
   try {
     const existing = db.getDb().prepare('SELECT id FROM permissions WHERE name = ?').get(req.validated.name);
     if (existing) return res.status(409).json({ error: 'Permission already exists' });
@@ -112,12 +124,14 @@ router.post('/permissions', authorize('Admin', 'SuperAdmin'), validate('permissi
     const permission = db.getDb().prepare('SELECT * FROM permissions WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, permission });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Assign permission to role
-router.post('/roles/:roleId/permissions', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.post('/roles/:roleId/permissions', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const roleId = parseInt(req.params.roleId);
     const { permission_id } = req.body;
@@ -133,12 +147,14 @@ router.post('/roles/:roleId/permissions', authorize('Admin', 'SuperAdmin'), (req
     db.assignPermissionToRole(roleId, permission_id);
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Remove permission from role
-router.delete('/roles/:roleId/permissions/:permissionId', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.delete('/roles/:roleId/permissions/:permissionId', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const roleId = parseInt(req.params.roleId);
     const permissionId = parseInt(req.params.permissionId);
@@ -146,17 +162,21 @@ router.delete('/roles/:roleId/permissions/:permissionId', authorize('Admin', 'Su
     db.removePermissionFromRole(roleId, permissionId);
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get permissions for a role name (for frontend)
-router.get('/permissions/role/:roleName', authorize('Admin', 'SuperAdmin', 'HR'), (req, res) => {
+router.get('/permissions/role/:roleName', authorize('Admin', 'SuperAdmin', 'HR'), (req, res, next) => {
   try {
     const permissions = db.getPermissionsForRoleName(req.params.roleName);
     res.json({ permissions });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

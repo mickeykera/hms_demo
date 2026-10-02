@@ -8,7 +8,7 @@ const router = Router();
 const MANAGER = ['Admin', 'SuperAdmin', 'Pharmacy', 'Finance'];
 
 // ---------- Suppliers ----------
-router.get('/suppliers', authorize(MANAGER), (req, res) => {
+router.get('/suppliers', authorize(MANAGER), (req, res, next) => {
   try {
     const suppliers = db.getDb().prepare(`
       SELECT s.*,
@@ -19,11 +19,13 @@ router.get('/suppliers', authorize(MANAGER), (req, res) => {
     `).all();
     res.json({ suppliers });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/suppliers', authorize(MANAGER), validate('supplier'), (req, res) => {
+router.post('/suppliers', authorize(MANAGER), validate('supplier'), (req, res, next) => {
   try {
     const v = req.validated;
     const r = db.getDb().prepare(`
@@ -40,11 +42,13 @@ router.post('/suppliers', authorize(MANAGER), validate('supplier'), (req, res) =
     });
     res.status(201).json({ success: true, supplier });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.put('/suppliers/:id', authorize(MANAGER), validate('supplierUpdate'), (req, res) => {
+router.put('/suppliers/:id', authorize(MANAGER), validate('supplierUpdate'), (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const existing = db.getDb().prepare('SELECT * FROM suppliers WHERE id = ?').get(id);
@@ -68,12 +72,14 @@ router.put('/suppliers/:id', authorize(MANAGER), validate('supplierUpdate'), (re
     );
     res.json({ success: true, supplier: db.getDb().prepare('SELECT * FROM suppliers WHERE id = ?').get(id) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // ---------- Purchase orders ----------
-router.get('/purchase-orders', authorize(MANAGER), (req, res) => {
+router.get('/purchase-orders', authorize(MANAGER), (req, res, next) => {
   try {
     const { status } = req.query;
     const orders = db.getDb().prepare(`
@@ -95,11 +101,13 @@ router.get('/purchase-orders', authorize(MANAGER), (req, res) => {
       orders: orders.map(o => ({ ...o, items: items.filter(i => i.purchase_order_id === o.id) })),
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/purchase-orders', authorize(MANAGER), validate('purchaseOrder'), (req, res) => {
+router.post('/purchase-orders', authorize(MANAGER), validate('purchaseOrder'), (req, res, next) => {
   try {
     const v = req.validated;
     const supplier = db.getDb().prepare('SELECT * FROM suppliers WHERE id = ?').get(v.supplier_id);
@@ -137,11 +145,13 @@ router.post('/purchase-orders', authorize(MANAGER), validate('purchaseOrder'), (
       throw inner;
     }
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.put('/purchase-orders/:id/status', authorize(MANAGER), (req, res) => {
+router.put('/purchase-orders/:id/status', authorize(MANAGER), (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const { status } = req.body;
@@ -153,12 +163,14 @@ router.put('/purchase-orders/:id/status', authorize(MANAGER), (req, res) => {
     db.getDb().prepare('UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, id);
     res.json({ success: true, order: db.getDb().prepare('SELECT * FROM purchase_orders WHERE id = ?').get(id) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // ---------- Procurement summary (drives the Inventory "reports" tab) ----------
-router.get('/reports', authorize(MANAGER), (req, res) => {
+router.get('/reports', authorize(MANAGER), (req, res, next) => {
   try {
     const stock = db.getDb().prepare(`
       SELECT i.medication_id, m.name AS medication_name, m.strength, m.unit_price,
@@ -183,7 +195,9 @@ router.get('/reports', authorize(MANAGER), (req, res) => {
 
     res.json({ stock, totals });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

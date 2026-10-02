@@ -5,7 +5,7 @@ import * as db from '../../models/index.js';
 
 const router = Router();
 
-router.get('/doctors', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse']), (req, res) => {
+router.get('/doctors', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse']), (req, res, next) => {
   const doctors = db.getDb().prepare(
     `SELECT id, username, full_name, role, department FROM users
      WHERE role = 'Doctor' ORDER BY full_name`
@@ -37,7 +37,9 @@ router.get(
       `).all(req.params.doctorId, req.params.doctorId);
       res.json({ patients });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      // Let the central error handler classify this (409 for UNIQUE,
+      // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+      next(e);
     }
   }
 );
@@ -60,7 +62,9 @@ router.get(
       sql += ' ORDER BY c.consultation_date DESC LIMIT 50';
       res.json({ consultations: db.getDb().prepare(sql).all(...params) });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      // Let the central error handler classify this (409 for UNIQUE,
+      // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+      next(e);
     }
   }
 );
@@ -110,7 +114,9 @@ router.post(
         created: true,
       });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      // Let the central error handler classify this (409 for UNIQUE,
+      // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+      next(e);
     }
   }
 );
@@ -138,7 +144,9 @@ router.put(
       db.updateConsultationSoap(id, req.validated);
       res.json({ success: true, consultation: db.getConsultationById(id) });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      // Let the central error handler classify this (409 for UNIQUE,
+      // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+      next(e);
     }
   }
 );
@@ -152,7 +160,7 @@ router.put(
  * Also closes out the associated visit: a finalized encounter should not stay
  * in the queue as InConsultation.
  */
-router.post('/consultations/:id/sign', authorize(['Doctor', 'Admin']), (req, res) => {
+router.post('/consultations/:id/sign', authorize(['Doctor', 'Admin']), (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const existing = db.getConsultationById(id);
@@ -189,11 +197,13 @@ router.post('/consultations/:id/sign', authorize(['Doctor', 'Admin']), (req, res
 
     res.json({ success: true, consultation: db.getConsultationById(id) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/consult', authorize(['Doctor', 'Admin']), validate('consultation'), (req, res) => {
+router.post('/consult', authorize(['Doctor', 'Admin']), validate('consultation'), (req, res, next) => {
   try {
     const result = db.createConsultation(req.validated);
     const id = result.lastInsertRowid;
@@ -210,7 +220,9 @@ router.post('/consult', authorize(['Doctor', 'Admin']), validate('consultation')
 
     res.status(201).json({ success: true, consultation_id: id, consultation });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -227,7 +239,7 @@ router.post('/:patientId/history', authorize(['Doctor', 'Admin']), validate('med
   res.status(201).json({ success: true });
 });
 
-router.post('/:patientId/prescription', authorize(['Doctor', 'Admin']), validate('prescription'), (req, res) => {
+router.post('/:patientId/prescription', authorize(['Doctor', 'Admin']), validate('prescription'), (req, res, next) => {
   try {
     const result = db.createPrescription({ ...req.validated, patient_id: req.params.patientId, prescribing_doctor_id: req.user.id });
     const prescriptionId = result.lastInsertRowid;
@@ -252,7 +264,9 @@ router.post('/:patientId/prescription', authorize(['Doctor', 'Admin']), validate
     });
     res.status(201).json({ success: true, prescription_id: prescriptionId, status: 'ORDERED' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

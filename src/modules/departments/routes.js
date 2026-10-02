@@ -14,39 +14,45 @@ const departmentSchema = z.object({
 });
 
 // Get all departments
-router.get('/', authorize('Admin', 'SuperAdmin', 'HR', 'Finance', 'DepartmentAdmin', 'Doctor', 'Nurse', 'Receptionist'), (req, res) => {
+router.get('/', authorize('Admin', 'SuperAdmin', 'HR', 'Finance', 'DepartmentAdmin', 'Doctor', 'Nurse', 'Receptionist'), (req, res, next) => {
   try {
     const departments = db.getAllDepartments();
     res.json({ departments });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get department by ID
-router.get('/:id', authorize('Admin', 'SuperAdmin', 'HR', 'Finance', 'DepartmentAdmin', 'Doctor', 'Nurse'), (req, res) => {
+router.get('/:id', authorize('Admin', 'SuperAdmin', 'HR', 'Finance', 'DepartmentAdmin', 'Doctor', 'Nurse'), (req, res, next) => {
   try {
     const department = db.getDepartmentById(parseInt(req.params.id));
     if (!department) return res.status(404).json({ error: 'Department not found' });
     res.json({ department });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get department by code
-router.get('/code/:code', authorize('Admin', 'SuperAdmin', 'HR', 'Finance', 'DepartmentAdmin', 'Doctor', 'Nurse'), (req, res) => {
+router.get('/code/:code', authorize('Admin', 'SuperAdmin', 'HR', 'Finance', 'DepartmentAdmin', 'Doctor', 'Nurse'), (req, res, next) => {
   try {
     const department = db.getDepartmentByCode(req.params.code);
     if (!department) return res.status(404).json({ error: 'Department not found' });
     res.json({ department });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Create department (Admin, SuperAdmin)
-router.post('/', authorize('Admin', 'SuperAdmin'), validate('department'), (req, res) => {
+router.post('/', authorize('Admin', 'SuperAdmin'), validate('department'), (req, res, next) => {
   try {
     const existing = db.getDepartmentByCode(req.validated.code);
     if (existing) return res.status(409).json({ error: 'Department code already exists' });
@@ -55,12 +61,14 @@ router.post('/', authorize('Admin', 'SuperAdmin'), validate('department'), (req,
     const department = db.getDepartmentById(result.lastInsertRowid);
     res.status(201).json({ success: true, department });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Update department (Admin, SuperAdmin)
-router.put('/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.put('/:id', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const department = db.getDepartmentById(id);
@@ -70,17 +78,21 @@ router.put('/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
     const updated = db.getDepartmentById(id);
     res.json({ success: true, department: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get department personnel
-router.get('/:id/personnel', authorize('Admin', 'SuperAdmin', 'HR', 'DepartmentAdmin'), (req, res) => {
+router.get('/:id/personnel', authorize('Admin', 'SuperAdmin', 'HR', 'DepartmentAdmin'), (req, res, next) => {
   try {
     const personnel = db.getAllPersonnel({ department_id: parseInt(req.params.id) });
     res.json({ personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

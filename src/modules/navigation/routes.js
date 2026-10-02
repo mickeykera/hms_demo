@@ -175,7 +175,7 @@ function filterNavigationByPermissions(navigation, userPermissions) {
   }).filter(Boolean);
 }
 
-router.get('/navigation', authenticate, (req, res) => {
+router.get('/navigation', authenticate, (req, res, next) => {
   try {
     const roleNavigation = ROLE_NAVIGATION[req.user.role] || [];
     const userPermissions = req.user.permissions || [];
@@ -193,18 +193,22 @@ router.get('/navigation', authenticate, (req, res) => {
       }
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/permissions', authenticate, (req, res) => {
+router.get('/permissions', authenticate, (req, res, next) => {
   try {
     res.json({ 
       permissions: req.user.permissions || [],
       role: req.user.role,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

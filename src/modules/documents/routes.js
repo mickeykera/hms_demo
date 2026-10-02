@@ -69,7 +69,7 @@ function canAccessDocument(document, user) {
 }
 
 // Upload document
-router.post('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Receptionist'), upload.single('file'), (req, res) => {
+router.post('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Receptionist'), upload.single('file'), (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
@@ -101,23 +101,27 @@ router.post('/', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy'
     
     res.status(201).json({ success: true, document: created });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get documents for a patient
-router.get('/patient/:patientId', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Patient'), checkPatientAccess, (req, res) => {
+router.get('/patient/:patientId', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Patient'), checkPatientAccess, (req, res, next) => {
   try {
     const accessLevel = req.query.access_level;
     const documents = db.getDocumentsByPatient(parseInt(req.params.patientId), accessLevel);
     res.json({ documents });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get document by ID
-router.get('/:id', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Patient'), (req, res) => {
+router.get('/:id', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Patient'), (req, res, next) => {
   try {
     const document = db.getDocumentById(parseInt(req.params.id));
     if (!document) return res.status(404).json({ error: 'Document not found' });
@@ -128,12 +132,14 @@ router.get('/:id', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmac
     
     res.json({ document });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Download document
-router.get('/:id/download', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Patient'), (req, res) => {
+router.get('/:id/download', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology', 'Pharmacy', 'Admin', 'SuperAdmin', 'Patient'), (req, res, next) => {
   try {
     const document = db.getDocumentById(parseInt(req.params.id));
     if (!document) return res.status(404).json({ error: 'Document not found' });
@@ -148,12 +154,14 @@ router.get('/:id/download', authorize('Doctor', 'Nurse', 'LabTech', 'Radiology',
     
     res.download(document.file_path, document.file_name);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Delete document (admin or uploader)
-router.delete('/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.delete('/:id', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const document = db.getDocumentById(parseInt(req.params.id));
     if (!document) return res.status(404).json({ error: 'Document not found' });
@@ -180,7 +188,9 @@ router.delete('/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
     
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

@@ -30,26 +30,30 @@ const bedSchema = z.object({
 });
 
 // Wards
-router.get('/', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res) => {
+router.get('/', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res, next) => {
   try {
     const wards = db.getAllWards(req.query.active !== 'false');
     res.json({ wards });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/:id', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res) => {
+router.get('/:id', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res, next) => {
   try {
     const ward = db.getWardById(parseInt(req.params.id));
     if (!ward) return res.status(404).json({ error: 'Ward not found' });
     res.json({ ward });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/', authorize('Admin', 'SuperAdmin'), validate('ward'), (req, res) => {
+router.post('/', authorize('Admin', 'SuperAdmin'), validate('ward'), (req, res, next) => {
   try {
     const existing = db.getDb().prepare('SELECT id FROM wards WHERE name = ?').get(req.validated.name);
     if (existing) return res.status(409).json({ error: 'Ward name already exists' });
@@ -58,11 +62,13 @@ router.post('/', authorize('Admin', 'SuperAdmin'), validate('ward'), (req, res) 
     const ward = db.getWardById(result.lastInsertRowid);
     res.status(201).json({ success: true, ward });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.put('/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.put('/:id', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const ward = db.getWardById(id);
@@ -72,31 +78,37 @@ router.put('/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
     const updated = db.getWardById(id);
     res.json({ success: true, ward: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Rooms
-router.get('/:wardId/rooms', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res) => {
+router.get('/:wardId/rooms', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res, next) => {
   try {
     const rooms = db.getRoomsByWard(parseInt(req.params.wardId), req.query.active !== 'false');
     res.json({ rooms });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/rooms/:id', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res) => {
+router.get('/rooms/:id', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res, next) => {
   try {
     const room = db.getRoomById(parseInt(req.params.id));
     if (!room) return res.status(404).json({ error: 'Room not found' });
     res.json({ room });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/rooms', authorize('Admin', 'SuperAdmin'), validate('room'), (req, res) => {
+router.post('/rooms', authorize('Admin', 'SuperAdmin'), validate('room'), (req, res, next) => {
   try {
     const existing = db.getDb().prepare('SELECT id FROM rooms WHERE ward_id = ? AND room_number = ?').get(req.validated.ward_id, req.validated.room_number);
     if (existing) return res.status(409).json({ error: 'Room number already exists in this ward' });
@@ -105,11 +117,13 @@ router.post('/rooms', authorize('Admin', 'SuperAdmin'), validate('room'), (req, 
     const room = db.getRoomById(result.lastInsertRowid);
     res.status(201).json({ success: true, room });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.put('/rooms/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.put('/rooms/:id', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const room = db.getRoomById(id);
@@ -119,23 +133,27 @@ router.put('/rooms/:id', authorize('Admin', 'SuperAdmin'), (req, res) => {
     const updated = db.getRoomById(id);
     res.json({ success: true, room: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Ward Beds (enhanced)
-router.get('/beds', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res) => {
+router.get('/beds', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse', 'WardStaff', 'Receptionist'), (req, res, next) => {
   try {
     const wardId = req.query.ward_id ? parseInt(req.query.ward_id) : null;
     const beds = db.getWardBedsWithDetails(wardId);
     res.json({ beds });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Create bed
-router.post('/beds', authorize('Admin', 'SuperAdmin'), validate('bed'), (req, res) => {
+router.post('/beds', authorize('Admin', 'SuperAdmin'), validate('bed'), (req, res, next) => {
   try {
     const existing = db.getDb().prepare('SELECT id FROM ward_beds WHERE bed_number = ?').get(req.validated.bed_number);
     if (existing) return res.status(409).json({ error: 'Bed number already exists' });
@@ -143,12 +161,14 @@ router.post('/beds', authorize('Admin', 'SuperAdmin'), validate('bed'), (req, re
     const result = db.createWardBed(req.validated);
     res.status(201).json({ success: true, bed_id: result.lastInsertRowid });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Update bed status
-router.put('/beds/:id/status', authorize('Admin', 'SuperAdmin', 'Nurse', 'WardStaff'), (req, res) => {
+router.put('/beds/:id/status', authorize('Admin', 'SuperAdmin', 'Nurse', 'WardStaff'), (req, res, next) => {
   try {
     const { status, patient_id } = req.body;
     if (!['Available', 'Occupied', 'Reserved', 'Maintenance'].includes(status)) {
@@ -180,12 +200,14 @@ router.put('/beds/:id/status', authorize('Admin', 'SuperAdmin', 'Nurse', 'WardSt
     
     res.json({ success: true, bed });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get bed occupancy stats
-router.get('/stats/occupancy', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse'), (req, res) => {
+router.get('/stats/occupancy', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse'), (req, res, next) => {
   try {
     const db2 = db.getDb();
     const stats = db2.prepare(`
@@ -206,7 +228,9 @@ router.get('/stats/occupancy', authorize('Admin', 'SuperAdmin', 'Doctor', 'Nurse
     
     res.json({ occupancy: stats });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

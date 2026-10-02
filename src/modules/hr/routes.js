@@ -16,7 +16,7 @@ const NAME_COLS = `p.id AS personnel_id,
   d.name AS department`;
 
 // ---------- Attendance ----------
-router.get('/attendance', authorize(HR), (req, res) => {
+router.get('/attendance', authorize(HR), (req, res, next) => {
   try {
     const { date, personnel_id } = req.query;
     const records = db.getDb().prepare(`
@@ -31,11 +31,13 @@ router.get('/attendance', authorize(HR), (req, res) => {
     `).all(date || null, date || null, personnel_id || null, personnel_id || null);
     res.json({ attendance: records });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/attendance', authorize(HR), validate('attendance'), (req, res) => {
+router.post('/attendance', authorize(HR), validate('attendance'), (req, res, next) => {
   try {
     const v = req.validated;
     const person = db.getDb().prepare('SELECT id FROM personnel WHERE id = ?').get(v.personnel_id);
@@ -62,12 +64,14 @@ router.post('/attendance', authorize(HR), validate('attendance'), (req, res) => 
 
     res.status(201).json({ success: true, record });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // ---------- Leave ----------
-router.get('/leave', authorize(HR), (req, res) => {
+router.get('/leave', authorize(HR), (req, res, next) => {
   try {
     const { status } = req.query;
     const requests = db.getDb().prepare(`
@@ -80,11 +84,13 @@ router.get('/leave', authorize(HR), (req, res) => {
     `).all(status || null, status || null);
     res.json({ leave: requests });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/leave', authorize(HR), validate('leaveRequest'), (req, res) => {
+router.post('/leave', authorize(HR), validate('leaveRequest'), (req, res, next) => {
   try {
     const v = req.validated;
     const r = db.getDb().prepare(`
@@ -100,11 +106,13 @@ router.post('/leave', authorize(HR), validate('leaveRequest'), (req, res) => {
 
     res.status(201).json({ success: true, request });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.put('/leave/:id/decision', authorize(HR), validate('leaveDecision'), (req, res) => {
+router.put('/leave/:id/decision', authorize(HR), validate('leaveDecision'), (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const existing = db.getDb().prepare('SELECT * FROM leave_requests WHERE id = ?').get(id);
@@ -119,14 +127,16 @@ router.put('/leave/:id/decision', authorize(HR), validate('leaveDecision'), (req
 
     res.json({ success: true, request: db.getDb().prepare('SELECT * FROM leave_requests WHERE id = ?').get(id) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // ---------- Payroll ----------
 // net_pay is always derived here: basic + allowances - deductions. The client
 // never supplies it, so a tampered payload cannot inflate a payslip.
-router.get('/payroll', authorize(HR), (req, res) => {
+router.get('/payroll', authorize(HR), (req, res, next) => {
   try {
     const { pay_period } = req.query;
     const records = db.getDb().prepare(`
@@ -139,11 +149,13 @@ router.get('/payroll', authorize(HR), (req, res) => {
     `).all(pay_period || null, pay_period || null);
     res.json({ payroll: records });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/payroll', authorize(HR), validate('payroll'), (req, res) => {
+router.post('/payroll', authorize(HR), validate('payroll'), (req, res, next) => {
   try {
     const v = req.validated;
     const person = db.getDb().prepare('SELECT id FROM personnel WHERE id = ?').get(v.personnel_id);
@@ -169,11 +181,13 @@ router.post('/payroll', authorize(HR), validate('payroll'), (req, res) => {
 
     res.status(201).json({ success: true, record });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 // ---------- Performance ----------
-router.get('/reviews', authorize(HR), (req, res) => {
+router.get('/reviews', authorize(HR), (req, res, next) => {
   try {
     const reviews = db.getDb().prepare(`
       SELECT pr.*, ${NAME_COLS}
@@ -184,11 +198,13 @@ router.get('/reviews', authorize(HR), (req, res) => {
     `).all();
     res.json({ reviews });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/reviews', authorize(HR), validate('performanceReview'), (req, res) => {
+router.post('/reviews', authorize(HR), validate('performanceReview'), (req, res, next) => {
   try {
     const v = req.validated;
     const person = db.getDb().prepare('SELECT id FROM personnel WHERE id = ?').get(v.personnel_id);
@@ -217,12 +233,14 @@ router.post('/reviews', authorize(HR), validate('performanceReview'), (req, res)
 
     res.status(201).json({ success: true, review });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // ---------- HR summary (drives the dashboard stat tiles) ----------
-router.get('/summary', authorize(HR), (req, res) => {
+router.get('/summary', authorize(HR), (req, res, next) => {
   try {
     const totals = db.getDb().prepare(`
       SELECT
@@ -235,7 +253,9 @@ router.get('/summary', authorize(HR), (req, res) => {
     `).get();
     res.json(totals);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

@@ -18,7 +18,7 @@ const auditLogFilterSchema = z.object({
 });
 
 // Get audit logs with filters
-router.get('/', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res) => {
+router.get('/', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res, next) => {
   try {
     const filters = {
       actor_id: req.query.actor_id ? parseInt(req.query.actor_id) : undefined,
@@ -78,12 +78,14 @@ router.get('/', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res) =>
 
     res.json({ logs, total, limit: filters.limit, offset: filters.offset });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get audit log statistics
-router.get('/stats', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res) => {
+router.get('/stats', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res, next) => {
   try {
     const days = req.query.days ? parseInt(req.query.days) : 30;
     
@@ -134,12 +136,14 @@ router.get('/stats', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, re
 
     res.json({ totalLogs, byAction, byResource, byActor, byUser, hourlyActivity });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get audit log for a specific resource
-router.get('/resource/:resourceType/:resourceId', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res) => {
+router.get('/resource/:resourceType/:resourceId', authorize('Admin', 'SuperAdmin', 'HR', 'Finance'), (req, res, next) => {
   try {
     const { resourceType, resourceId } = req.params;
     const logs = db.getDb().prepare(`
@@ -152,12 +156,14 @@ router.get('/resource/:resourceType/:resourceId', authorize('Admin', 'SuperAdmin
     
     res.json({ logs });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get audit log for a specific user (actor)
-router.get('/user/:userId', authorize('Admin', 'SuperAdmin', 'HR'), (req, res) => {
+router.get('/user/:userId', authorize('Admin', 'SuperAdmin', 'HR'), (req, res, next) => {
   try {
     const userId = parseInt(req.params.userId);
     const logs = db.getDb().prepare(`
@@ -171,12 +177,14 @@ router.get('/user/:userId', authorize('Admin', 'SuperAdmin', 'HR'), (req, res) =
     
     res.json({ logs });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Export audit logs (CSV)
-router.get('/export', authorize('Admin', 'SuperAdmin'), (req, res) => {
+router.get('/export', authorize('Admin', 'SuperAdmin'), (req, res, next) => {
   try {
     const filters = {
       actor_id: req.query.actor_id ? parseInt(req.query.actor_id) : undefined,
@@ -225,7 +233,9 @@ router.get('/export', authorize('Admin', 'SuperAdmin'), (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="audit_logs_${new Date().toISOString().split('T')[0]}.csv"`);
     res.send(csv);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

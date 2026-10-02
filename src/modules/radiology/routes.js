@@ -15,7 +15,7 @@ const TRANSITIONS = {
   CANCELLED: [],
 };
 
-router.post('/order', authorize(['Doctor', 'Admin']), (req, res) => {
+router.post('/order', authorize(['Doctor', 'Admin']), (req, res, next) => {
   try {
     const { patient_id, modality, body_part, clinical_indication } = req.body;
     if (!patient_id || !modality || !body_part) {
@@ -39,7 +39,9 @@ router.post('/order', authorize(['Doctor', 'Admin']), (req, res) => {
     db.createAuditLog({ actor_id: req.user.id, action: 'CREATE', resource_type: 'imaging_order', resource_id: orderId, details: `Ordered ${modality} for patient ${patient_id}`, ip_address: req.ip });
     res.status(201).json({ success: true, order: db.getDb().prepare('SELECT * FROM imaging_orders WHERE id = ?').get(orderId) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -48,7 +50,7 @@ router.post('/order', authorize(['Doctor', 'Admin']), (req, res) => {
  *
  * DoctorDashboard called /radiology/doctor/:id/pending, which did not exist.
  */
-router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, res) => {
+router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, res, next) => {
   try {
     const orders = db.getDb().prepare(`
       SELECT o.id, o.modality, o.body_part, o.clinical_indication,
@@ -63,7 +65,9 @@ router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, re
     `).all(req.params.doctorId);
     res.json({ orders });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -77,7 +81,7 @@ router.get('/queue', authorize(['Radiology', 'Admin']), (req, res) => {
   res.json({ queue, count: queue.length });
 });
 
-router.put('/:orderId/status', authorize(['Radiology', 'Admin']), (req, res) => {
+router.put('/:orderId/status', authorize(['Radiology', 'Admin']), (req, res, next) => {
   try {
     const { status, scheduled_at } = req.body;
     if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid imaging status' });
@@ -89,11 +93,13 @@ router.put('/:orderId/status', authorize(['Radiology', 'Admin']), (req, res) => 
     db.createAuditLog({ actor_id: req.user.id, action: 'UPDATE_STATUS', resource_type: 'imaging_order', resource_id: order.id, details: `Status changed from ${order.status} to ${status}`, ip_address: req.ip });
     res.json({ success: true, old_status: order.status, new_status: status });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/:orderId/report', authorize(['Radiology', 'Admin']), (req, res) => {
+router.post('/:orderId/report', authorize(['Radiology', 'Admin']), (req, res, next) => {
   try {
     const { findings, impression } = req.body;
     if (!findings) return res.status(400).json({ error: 'findings are required' });
@@ -106,7 +112,9 @@ router.post('/:orderId/report', authorize(['Radiology', 'Admin']), (req, res) =>
     db.createAuditLog({ actor_id: req.user.id, action: 'CREATE_REPORT', resource_type: 'imaging_report', resource_id: result.lastInsertRowid, details: `Report entered for imaging order ${order.id}`, ip_address: req.ip });
     res.status(201).json({ success: true, report_id: result.lastInsertRowid });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

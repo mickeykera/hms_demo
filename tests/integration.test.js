@@ -57,6 +57,89 @@ describe('API Integration Tests', () => {
   function authHeader(token) {
     return { Authorization: `Bearer ${token}` };
   }
+
+  describe('Error Status Codes', () => {
+    // These hit real SQLite constraint failures, which the route handlers used
+    // to swallow as a blanket 500 with the raw driver message attached.
+    it('should return 409 for a duplicate unique value', async () => {
+      const first = await request(app)
+        .post('/api/departments')
+        .set('Authorization', `Bearer ${authTokens.Admin}`)
+        .send({ name: 'Oncology Ward', code: 'ONC' });
+      expect(first.status).toBe(201);
+
+      // Same name, different code: the code guard does not catch it, so this
+      // one reaches the UNIQUE(name) constraint.
+      const dupe = await request(app)
+        .post('/api/departments')
+        .set('Authorization', `Bearer ${authTokens.Admin}`)
+        .send({ name: 'Oncology Ward', code: 'ONC2' });
+
+      expect(dupe.status).toBe(409);
+      expect(dupe.body.code).toBe('DUPLICATE_ENTRY');
+    });
+
+    it('should not leak internal driver messages on a constraint failure', async () => {
+      await request(app)
+        .post('/api/departments')
+        .set('Authorization', `Bearer ${authTokens.Admin}`)
+        .send({ name: 'Cardiology Ward', code: 'CAR' });
+
+      const dupe = await request(app)
+        .post('/api/departments')
+        .set('Authorization', `Bearer ${authTokens.Admin}`)
+        .send({ name: 'Cardiology Ward', code: 'CAR2' });
+
+      expect(dupe.status).toBe(409);
+      expect(JSON.stringify(dupe.body)).not.toContain('UNIQUE constraint');
+      expect(JSON.stringify(dupe.body)).not.toContain('SQLITE');
+    });
+
+    it('should return 400 for a foreign key violation', async () => {
+      // departments.parent_department_id references departments(id), and
+      // 999999 does not exist. The create handler only guards on code, so this
+      // reaches the database and trips the FK constraint.
+      const res = await request(app)
+        .post('/api/departments')
+        .set('Authorization', `Bearer ${authTokens.Admin}`)
+        .send({ name: 'Orphan Unit', code: 'ORP', parent_department_id: 999999 });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('FOREIGN_KEY_VIOLATION');
+    });
+
+    it('should return 400 with field details for a schema violation', async () => {
+      const res = await request(app)
+        .post('/api/reception/register')
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ first_name: '', last_name: '', date_of_birth: 'bad', gender: 'Nope', phone: '' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+      expect(res.body.details).toBeTruthy();
+    });
+
+    it('should return 404 with JSON for an unknown API route', async () => {
+      const res = await request(app)
+        .get('/api/does-not-exist')
+        .set('Authorization', `Bearer ${authTokens.Admin}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe('ROUTE_NOT_FOUND');
+    });
+
+    it('should return 401 for a missing token and 403 for a wrong role', async () => {
+      const missing = await request(app).get('/api/departments/');
+      expect(missing.status).toBe(401);
+
+      const wrongRole = await request(app)
+        .post('/api/departments')
+        .set('Authorization', `Bearer ${authTokens.Nurse}`)
+        .send({ name: 'Nope', code: 'NOP' });
+      expect(wrongRole.status).toBe(403);
+    });
+  });
+
   describe('Pharmacy Queue Authorization', () => {
     // The dispensing queue is deliberately narrower than
     // MODULE_PERMISSIONS.Pharmacy (which also lists Doctor, Billing and

@@ -37,7 +37,7 @@ router.get('/beds', authorize(['Receptionist', 'Doctor', 'Nurse', 'Admin']), (re
  * the 404s, so the nurse dashboard rendered permanently empty.
  * These routes return the data each panel actually displays.
  */
-router.get('/nurse/:nurseId/patients', authorize(['Nurse', 'Admin']), (req, res) => {
+router.get('/nurse/:nurseId/patients', authorize(['Nurse', 'Admin']), (req, res, next) => {
   try {
     // Patients currently admitted to a bed the nurse's ward covers; falls back
     // to all active admissions so the dashboard is never blank.
@@ -56,11 +56,13 @@ router.get('/nurse/:nurseId/patients', authorize(['Nurse', 'Admin']), (req, res)
     `).all();
     res.json({ patients });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/nurse/:nurseId/vitals', authorize(['Nurse', 'Admin']), (req, res) => {
+router.get('/nurse/:nurseId/vitals', authorize(['Nurse', 'Admin']), (req, res, next) => {
   try {
     const vitals = db.getDb().prepare(`
       SELECT n.id, n.admission_id, n.note_time, n.vital_signs, n.note_text,
@@ -86,11 +88,13 @@ router.get('/nurse/:nurseId/vitals', authorize(['Nurse', 'Admin']), (req, res) =
     });
     res.json({ vitals });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/nurse/:nurseId/medications', authorize(['Nurse', 'Admin']), (req, res) => {
+router.get('/nurse/:nurseId/medications', authorize(['Nurse', 'Admin']), (req, res, next) => {
   try {
     const medications = db.getDb().prepare(`
       SELECT pr.id, pr.medication_name, pr.dosage, pr.frequency,
@@ -111,11 +115,13 @@ router.get('/nurse/:nurseId/medications', authorize(['Nurse', 'Admin']), (req, r
     }));
     res.json({ medications });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/nurse/:nurseId/tasks', authorize(['Nurse', 'Admin']), (req, res) => {
+router.get('/nurse/:nurseId/tasks', authorize(['Nurse', 'Admin']), (req, res, next) => {
   try {
     const tasks = db.getDb().prepare(`
       SELECT n.id, n.admission_id, n.note_time, n.note_text,
@@ -131,11 +137,13 @@ router.get('/nurse/:nurseId/tasks', authorize(['Nurse', 'Admin']), (req, res) =>
     `).all().map((t) => ({ ...t, completed: false }));
     res.json({ tasks });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/nurse/:nurseId/orders', authorize(['Nurse', 'Admin']), (req, res) => {
+router.get('/nurse/:nurseId/orders', authorize(['Nurse', 'Admin']), (req, res, next) => {
   try {
     const orders = db.getDb().prepare(`
       SELECT l.id, l.test_name, l.status, l.ordered_at,
@@ -148,7 +156,9 @@ router.get('/nurse/:nurseId/orders', authorize(['Nurse', 'Admin']), (req, res) =
     `).all();
     res.json({ orders });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

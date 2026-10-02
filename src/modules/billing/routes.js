@@ -5,7 +5,7 @@ import * as db from '../../models/index.js';
 
 const router = Router();
 
-router.post('/invoice', authorize(['Billing', 'Admin', 'Doctor']), validate('invoice'), (req, res) => {
+router.post('/invoice', authorize(['Billing', 'Admin', 'Doctor']), validate('invoice'), (req, res, next) => {
   try {
     const invoiceNumber = db.generateInvoiceNumber();
     console.log('Validated invoice data:', req.validated);
@@ -13,8 +13,9 @@ router.post('/invoice', authorize(['Billing', 'Admin', 'Doctor']), validate('inv
     const invoice = db.getInvoiceById(result.lastInsertRowid);
     res.status(201).json({ success: true, invoice_number: invoice.invoice_number, invoice });
   } catch (e) {
-    console.error('Billing invoice error:', e);
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -27,7 +28,7 @@ router.post('/invoice', authorize(['Billing', 'Admin', 'Doctor']), validate('inv
  * Billing and Admin only: this exposes aggregate revenue across every
  * patient, which patient-scoped callers must not see.
  */
-router.get('/stats', authorize(['Billing', 'Admin']), (req, res) => {
+router.get('/stats', authorize(['Billing', 'Admin']), (req, res, next) => {
   try {
     const stmt = db.getDb().prepare(`
       SELECT
@@ -66,7 +67,9 @@ router.get('/stats', authorize(['Billing', 'Admin']), (req, res) => {
       insurance_pending: insurance.insurance_pending,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -76,7 +79,7 @@ router.get('/stats', authorize(['Billing', 'Admin']), (req, res) => {
  * Supports ?status=Unpaid and ?limit=10. Patient names are joined in because
  * the table renders invoice.patient_first / invoice.patient_last.
  */
-router.get('/invoices', authorize(['Billing', 'Admin']), (req, res) => {
+router.get('/invoices', authorize(['Billing', 'Admin']), (req, res, next) => {
   try {
     const { status } = req.query;
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
@@ -100,7 +103,9 @@ router.get('/invoices', authorize(['Billing', 'Admin']), (req, res) => {
 
     res.json({ invoices: rows, total: totals.count, total_balance: totals.balance });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

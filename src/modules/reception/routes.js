@@ -6,18 +6,20 @@ import { getPatientDashboard } from '../../models/patient-engine.js';
 
 const router = Router();
 
-router.post('/register', authorize(['Receptionist', 'Admin']), validate('patientRegister'), (req, res) => {
+router.post('/register', authorize(['Receptionist', 'Admin']), validate('patientRegister'), (req, res, next) => {
   try {
     const globalId = db.generateGlobalId();
     const result = db.createPatient({ global_id: globalId, ...req.validated });
     const patient = db.getPatientById(result.lastInsertRowid);
     res.status(201).json({ success: true, global_id: patient.global_id, patient });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.post('/:globalId/checkin', authorize(['Receptionist', 'Admin']), validate('patientCheckin'), (req, res) => {
+router.post('/:globalId/checkin', authorize(['Receptionist', 'Admin']), validate('patientCheckin'), (req, res, next) => {
   try {
     const patient = db.getPatientByGlobalId(req.params.globalId);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
@@ -26,7 +28,9 @@ router.post('/:globalId/checkin', authorize(['Receptionist', 'Admin']), validate
     const visit = db.getVisitById(result.lastInsertRowid);
     res.status(201).json({ success: true, visit_id: visit.id, queue_position: visit.queue_position, global_id: patient.global_id });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

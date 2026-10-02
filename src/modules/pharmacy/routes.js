@@ -49,7 +49,7 @@ router.get('/medications', authorize(['Pharmacy', 'Admin', 'Doctor', 'Billing'])
   res.json({ medications });
 });
 
-router.post('/medications', authorize(['Pharmacy', 'Admin']), validate('medication'), (req, res) => {
+router.post('/medications', authorize(['Pharmacy', 'Admin']), validate('medication'), (req, res, next) => {
   try {
     const result = db.getDb().prepare(
       'INSERT INTO medications (name, generic_name, strength, form, manufacturer, unit_price, requires_prescription, controlled_substance, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -57,7 +57,9 @@ router.post('/medications', authorize(['Pharmacy', 'Admin']), validate('medicati
     const medication = db.getDb().prepare('SELECT * FROM medications WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, medication });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -68,7 +70,7 @@ router.get('/inventory', authorize(['Pharmacy', 'Admin']), (req, res) => {
   res.json({ inventory });
 });
 
-router.post('/inventory', authorize(['Pharmacy', 'Admin']), validate('inventory'), (req, res) => {
+router.post('/inventory', authorize(['Pharmacy', 'Admin']), validate('inventory'), (req, res, next) => {
   try {
     const result = db.getDb().prepare(
       'INSERT INTO pharmacy_inventory (medication_id, batch_number, quantity, expiry_date, location, unit_cost) VALUES (?, ?, ?, ?, ?, ?)'
@@ -76,7 +78,9 @@ router.post('/inventory', authorize(['Pharmacy', 'Admin']), validate('inventory'
     const item = db.getDb().prepare('SELECT * FROM pharmacy_inventory WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, item });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -92,7 +96,7 @@ router.get('/queue', authorize(['Pharmacy', 'Admin']), (req, res) => {
   res.json({ queue, count: queue.length });
 });
 
-router.put('/:prescriptionId/status', authorize(['Pharmacy', 'Admin']), (req, res) => {
+router.put('/:prescriptionId/status', authorize(['Pharmacy', 'Admin']), (req, res, next) => {
   try {
     const { status, rejection_reason } = req.body;
     if (!PRESCRIPTION_STATUSES.includes(status)) {
@@ -130,7 +134,9 @@ router.put('/:prescriptionId/status', authorize(['Pharmacy', 'Admin']), (req, re
     });
     res.json({ success: true, prescription_id: prescription.id, old_status: prescription.status, new_status: status });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -141,7 +147,7 @@ router.get('/prescriptions/:patientId', authorize(['Pharmacy', 'Admin', 'Doctor'
   res.json({ prescriptions });
 });
 
-router.post('/dispense', authorize(['Pharmacy', 'Admin']), validate('dispense'), (req, res) => {
+router.post('/dispense', authorize(['Pharmacy', 'Admin']), validate('dispense'), (req, res, next) => {
   try {
     const prescription = db.getDb().prepare('SELECT * FROM prescriptions WHERE id = ?').get(req.validated.prescription_id);
     if (!prescription) return res.status(404).json({ error: 'Prescription not found' });
@@ -178,7 +184,9 @@ router.post('/dispense', authorize(['Pharmacy', 'Admin']), validate('dispense'),
 
     res.json({ success: true, message: 'Medication dispensed' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

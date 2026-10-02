@@ -12,7 +12,7 @@ const LAB_STATUSES = ['Ordered', 'CollectionPending', 'Collected', 'InProgress',
  * Create a new lab test order
  * Doctor creates → Auto-notify Lab that test was ordered
  */
-router.post('/order', authorize(['Doctor', 'Admin']), validate('labOrder'), (req, res) => {
+router.post('/order', authorize(['Doctor', 'Admin']), validate('labOrder'), (req, res, next) => {
   try {
     const result = db.createLabTest({
       ...req.validated,
@@ -50,14 +50,16 @@ router.post('/order', authorize(['Doctor', 'Admin']), validate('labOrder'), (req
 
     res.status(201).json({ success: true, test_id: testId, test });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 /**
  * Get lab tests for a patient
  */
-router.get('/patient/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurse']), (req, res) => {
+router.get('/patient/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurse']), (req, res, next) => {
   try {
     const tests = db.getLabTestsByPatient(req.params.patientId);
     const results = tests.map(t => ({
@@ -66,7 +68,9 @@ router.get('/patient/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurs
     }));
     res.json({ tests: results });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -81,7 +85,7 @@ router.get('/patient/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurs
  * which silently returned nothing because a patient can have lab work ordered
  * without ever having had an appointment with that specific doctor.
  */
-router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, res) => {
+router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, res, next) => {
   try {
     const results = db.getDb().prepare(`
       SELECT l.id AS test_id, l.test_name, l.status, l.ordered_at,
@@ -96,11 +100,13 @@ router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, re
     `).all(req.params.doctorId);
     res.json({ results });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
-router.get('/queue/pending', authorize(['LabTech', 'Admin']), (req, res) => {
+router.get('/queue/pending', authorize(['LabTech', 'Admin']), (req, res, next) => {
   try {
     const queue = db.getDb().prepare(
       `SELECT lt.*, p.first_name, p.last_name, p.global_id, u.full_name as doctor_name
@@ -113,7 +119,9 @@ router.get('/queue/pending', authorize(['LabTech', 'Admin']), (req, res) => {
 
     res.json({ queue, count: queue.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -121,7 +129,7 @@ router.get('/queue/pending', authorize(['LabTech', 'Admin']), (req, res) => {
  * Update lab test status (workflow progression)
  * CollectionPending → Collected → InProgress → Verified → Released
  */
-router.put('/:testId/status', authorize(['LabTech', 'Admin']), (req, res) => {
+router.put('/:testId/status', authorize(['LabTech', 'Admin']), (req, res, next) => {
   try {
     const { status } = req.body;
 
@@ -185,7 +193,9 @@ router.put('/:testId/status', authorize(['LabTech', 'Admin']), (req, res) => {
 
     res.json({ success: true, test_id: req.params.testId, old_status: oldStatus, new_status: status });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -193,7 +203,7 @@ router.put('/:testId/status', authorize(['LabTech', 'Admin']), (req, res) => {
  * Enter lab test result
  * Lab Technician enters result → Auto-marks as Verified pending doctor review
  */
-router.post('/:testId/result', authorize(['LabTech', 'Admin']), validate('labResult'), (req, res) => {
+router.post('/:testId/result', authorize(['LabTech', 'Admin']), validate('labResult'), (req, res, next) => {
   try {
     const result = db.createLabResult({
       lab_test_id: req.params.testId,
@@ -228,14 +238,16 @@ router.post('/:testId/result', authorize(['LabTech', 'Admin']), validate('labRes
 
     res.status(201).json({ success: true, result_id: resultId, test_id: req.params.testId });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 /**
  * Get lab results for a patient
  */
-router.get('/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurse']), (req, res) => {
+router.get('/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurse']), (req, res, next) => {
   try {
     const tests = db.getLabTestsByPatient(req.params.patientId);
     const results = tests.map(t => ({
@@ -244,14 +256,16 @@ router.get('/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurse']), (r
     }));
     res.json({ tests: results });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 /**
  * Sync lab results to patient EMR (doctor action)
  */
-router.get('/:patientId/sync-to-emr', authorize(['Doctor', 'Admin', 'LabTech']), (req, res) => {
+router.get('/:patientId/sync-to-emr', authorize(['Doctor', 'Admin', 'LabTech']), (req, res, next) => {
   try {
     const tests = db.getLabTestsByPatient(req.params.patientId);
     const allResults = [];
@@ -277,7 +291,9 @@ router.get('/:patientId/sync-to-emr', authorize(['Doctor', 'Admin', 'LabTech']),
       flagged_results: flaggedResults,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

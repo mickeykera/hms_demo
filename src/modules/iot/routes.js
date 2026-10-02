@@ -5,14 +5,16 @@ import * as db from '../../models/index.js';
 
 const router = Router();
 
-router.post('/webhook', authorize(['Admin', 'Doctor', 'Nurse']), validate('iotTelemetry'), (req, res) => {
+router.post('/webhook', authorize(['Admin', 'Doctor', 'Nurse']), validate('iotTelemetry'), (req, res, next) => {
   try {
     const patient = db.getPatientById(req.validated.patient_id);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
     const result = db.createIoTTelemetry(req.validated);
     res.status(201).json({ success: true, telemetry_id: result.lastInsertRowid, patient_global_id: patient.global_id });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

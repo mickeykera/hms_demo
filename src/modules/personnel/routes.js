@@ -31,7 +31,7 @@ const personnelSchema = z.object({
 });
 
 // Get all personnel (Admin, HR)
-router.get('/', authorize('Admin', 'HR', 'SuperAdmin'), (req, res) => {
+router.get('/', authorize('Admin', 'HR', 'SuperAdmin'), (req, res, next) => {
   try {
     const filters = {
       department_id: req.query.department_id ? parseInt(req.query.department_id) : undefined,
@@ -41,45 +41,53 @@ router.get('/', authorize('Admin', 'HR', 'SuperAdmin'), (req, res) => {
     const personnel = db.getAllPersonnel(filters);
     res.json({ personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get personnel by ID
-router.get('/:id', authorize('Admin', 'HR', 'SuperAdmin', 'Doctor', 'Nurse'), (req, res) => {
+router.get('/:id', authorize('Admin', 'HR', 'SuperAdmin', 'Doctor', 'Nurse'), (req, res, next) => {
   try {
     const personnel = db.getPersonnelById(parseInt(req.params.id));
     if (!personnel) return res.status(404).json({ error: 'Personnel not found' });
     res.json({ personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get current user's personnel record
-router.get('/me/profile', (req, res) => {
+router.get('/me/profile', (req, res, next) => {
   try {
     const personnel = db.getPersonnelByUserId(req.user.id);
     if (!personnel) return res.status(404).json({ error: 'Personnel record not found' });
     res.json({ personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Create personnel (Admin, HR)
-router.post('/', authorize('Admin', 'HR', 'SuperAdmin'), validate('personnel'), (req, res) => {
+router.post('/', authorize('Admin', 'HR', 'SuperAdmin'), validate('personnel'), (req, res, next) => {
   try {
     const result = db.createPersonnel(req.validated);
     const personnel = db.getPersonnelById(result.lastInsertRowid);
     res.status(201).json({ success: true, personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Update personnel (Admin, HR, or self for limited fields)
-router.put('/:id', authorize('Admin', 'HR', 'SuperAdmin'), (req, res) => {
+router.put('/:id', authorize('Admin', 'HR', 'SuperAdmin'), (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const personnel = db.getPersonnelById(id);
@@ -104,27 +112,33 @@ router.put('/:id', authorize('Admin', 'HR', 'SuperAdmin'), (req, res) => {
     const updated = db.getPersonnelById(id);
     res.json({ success: true, personnel: updated });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get personnel by department
-router.get('/department/:departmentId', authorize('Admin', 'HR', 'SuperAdmin', 'Doctor', 'Nurse'), (req, res) => {
+router.get('/department/:departmentId', authorize('Admin', 'HR', 'SuperAdmin', 'Doctor', 'Nurse'), (req, res, next) => {
   try {
     const personnel = db.getAllPersonnel({ department_id: parseInt(req.params.departmentId) });
     res.json({ personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
 // Get personnel by role
-router.get('/role/:roleId', authorize('Admin', 'HR', 'SuperAdmin'), (req, res) => {
+router.get('/role/:roleId', authorize('Admin', 'HR', 'SuperAdmin'), (req, res, next) => {
   try {
     const personnel = db.getAllPersonnel({ role_id: parseInt(req.params.roleId) });
     res.json({ personnel });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 

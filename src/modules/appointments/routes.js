@@ -35,7 +35,7 @@ router.get('/', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse']), (req, r
   res.json({ appointments });
 });
 
-router.post('/', authorize(['Receptionist', 'Admin', 'Doctor']), validate('appointment'), (req, res) => {
+router.post('/', authorize(['Receptionist', 'Admin', 'Doctor']), validate('appointment'), (req, res, next) => {
   try {
     const conflict = db.getDb().prepare(
       `SELECT id FROM appointments
@@ -50,7 +50,9 @@ router.post('/', authorize(['Receptionist', 'Admin', 'Doctor']), validate('appoi
     const appointment = db.getDb().prepare('SELECT * FROM appointments WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, appointment });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
@@ -62,7 +64,7 @@ router.get('/:id', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse']), (req
   res.json({ appointment });
 });
 
-router.put('/:id', authorize(['Receptionist', 'Admin', 'Doctor']), validate('appointmentUpdate'), (req, res) => {
+router.put('/:id', authorize(['Receptionist', 'Admin', 'Doctor']), validate('appointmentUpdate'), (req, res, next) => {
   try {
     const current = db.getDb().prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id);
     if (!current) return res.status(404).json({ error: 'Appointment not found' });
@@ -76,7 +78,9 @@ router.put('/:id', authorize(['Receptionist', 'Admin', 'Doctor']), validate('app
     const appointment = db.getDb().prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id);
     res.json({ success: true, appointment });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Let the central error handler classify this (409 for UNIQUE,
+    // 400 for FK/NOT NULL/CHECK) and keep internals out of the response.
+    next(e);
   }
 });
 
