@@ -40,7 +40,24 @@ function whenEmpty(table, fn) {
   report[table] = `${fn()} rows added`;
 }
 
-whenEmpty('patients', () => {
+// The demo cohort cannot use whenEmpty('patients', ...).
+//
+// src/config/seed.js creates one patient with global_id 'DEMO001' so the
+// `patient` login account has a subject to read, and that happens *before* this
+// script runs. A "table is empty" check therefore always skipped, so the 30
+// demo patients were never created -- every seeded visit, appointment, invoice
+// and lab test ended up attached to that single DEMO001 patient.
+//
+// Key the check off the cohort's own global_id prefix instead. That is correct
+// on a fresh install (DEMO001 present, cohort absent -> cohort gets created) and
+// still idempotent on every later run (cohort present -> skipped).
+const demoCohort = db.prepare(
+  "SELECT COUNT(*) AS n FROM patients WHERE global_id LIKE 'HMS-%'"
+).get().n;
+
+if (demoCohort > 0) {
+  report['patients'] = `skipped (${demoCohort} demo patients existing)`;
+} else {
   const s = db.prepare(`INSERT INTO patients (global_id, first_name, last_name, date_of_birth,
     gender, blood_type, email, phone, address, emergency_contact_name, emergency_contact_phone,
     insurance_provider, insurance_id, medical_history_summary)
@@ -58,8 +75,8 @@ whenEmpty('patients', () => {
       `${pick(FIRST,i)} ${l}`, `555-02${String(10+i).padStart(2,'0')}`,
       prov[i % prov.length], `INS-${5000+i}`, hist[i % hist.length]);
   }
-  return 30;
-});
+  report['patients'] = '30 rows added';
+}
 
 // Resolve dependent ids AFTER patients exist.
 const patientIds = db.prepare('SELECT id FROM patients ORDER BY id').all().map(r => r.id);
