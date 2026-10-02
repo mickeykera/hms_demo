@@ -1,71 +1,306 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-primary-light: #dbeafe;
+  --color-accent: #059669;
+  --color-accent-light: #d1fae5;
+  --color-warning: #d97706;
+  --color-warning-light: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-light: #fee2e2;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
+    /* Never allow the page itself to scroll sideways; individual scroll
+       containers (tables, nav) handle their own overflow instead. */
+    overflow-x: hidden;
+  }
+
+  /* iOS zooms the viewport whenever a focused input is under 16px. */
+  @supports (-webkit-touch-callout: none) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
 }
 
 @layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  .card-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-body {
+    padding: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .stat-value {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-top: 0.25rem;
+  }
+
   .btn-primary {
     background-color: var(--color-primary);
     color: white;
-    padding: 0.5rem 1rem;
+    padding: 0.625rem 1.25rem;
     border-radius: 0.5rem;
     font-weight: 500;
-    transition: background-color 0.2s;
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    border: none;
+    cursor: pointer;
   }
+
   .btn-primary:hover {
     background-color: var(--color-primary-hover);
   }
-  .btn-primary:focus {
-    outline: none;
-    ring: 2px;
-    ring-color: var(--color-primary);
-    ring-offset: 2px;
+
+  .btn-primary:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
+
   .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+
   .btn-secondary {
-    background-color: #f3f4f6;
-    color: #1f2937;
-    padding: 0.5rem 1rem;
+    background-color: var(--color-surface-alt);
+    color: var(--color-text);
+    padding: 0.625rem 1.25rem;
     border-radius: 0.5rem;
     font-weight: 500;
-    transition: background-color 0.2s;
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
   }
+
   .btn-secondary:hover {
-    background-color: #e5e7eb;
+    background-color: #f1f5f9;
   }
+
   .input {
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #d1d5db;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    font-size: 0.875rem;
+    color: var(--color-text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background: var(--color-surface);
   }
+
   .input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  }
+
+  .input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: 0.375rem;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .badge-blue { background: var(--color-primary-light); color: #1d4ed8; }
+  .badge-green { background: var(--color-accent-light); color: #059669; }
+  .badge-yellow { background: var(--color-warning-light); color: #b45309; }
+  .badge-red { background: var(--color-danger-light); color: #dc2626; }
+  .badge-gray { background: #f1f5f9; color: #64748b; }
+
+  .table-container {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background-color: var(--color-surface-alt);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-text);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* Tabular data gets horizontal breathing room on narrow screens so cell
+     content does not collide while the container scrolls. */
+  @media (max-width: 767px) {
+    th,
+    td {
+      padding: 0.625rem 0.75rem;
+      white-space: nowrap;
+    }
+  }
+
+  /* Tabs scroll horizontally instead of overflowing on phones. */
+  @media (max-width: 767px) {
+    .tabs {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr:hover td {
+    background-color: var(--color-surface-alt);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+    gap: 0.25rem;
+  }
+
+  .tab {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .tab:hover {
+    color: var(--color-text);
+  }
+
+  .tab-active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+
+  .empty-state-icon {
+    margin: 0 auto 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .empty-state-text {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
   }
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+/* Toast entry animation. Defined here rather than in tailwind.config.js
+   because the project uses Tailwind v4 (@import "tailwindcss"), which reads
+   theme values from CSS rather than a JS config file. */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
 }
 
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in {
+    animation: none;
+  }
 }

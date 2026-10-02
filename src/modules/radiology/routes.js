@@ -43,6 +43,30 @@ router.post('/order', authorize(['Doctor', 'Admin']), (req, res) => {
   }
 });
 
+/**
+ * Doctor-scoped pending imaging worklist.
+ *
+ * DoctorDashboard called /radiology/doctor/:id/pending, which did not exist.
+ */
+router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, res) => {
+  try {
+    const orders = db.getDb().prepare(`
+      SELECT o.id, o.modality, o.body_part, o.clinical_indication,
+             o.status, o.ordered_at, o.scheduled_at,
+             p.id AS patient_id, p.first_name, p.last_name, p.global_id
+        FROM imaging_orders o
+        JOIN patients p ON p.id = o.patient_id
+        WHERE o.ordering_doctor_id = ?
+          AND o.status IN ('ORDERED','SCHEDULED','IN_PROGRESS','REPORT_PENDING')
+       ORDER BY o.ordered_at DESC
+       LIMIT 50
+    `).all(req.params.doctorId);
+    res.json({ orders });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/queue', authorize(['Radiology', 'Admin']), (req, res) => {
   const queue = db.getDb().prepare(
     `SELECT io.*, p.first_name, p.last_name, p.global_id, u.full_name AS doctor_name

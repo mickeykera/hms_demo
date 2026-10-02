@@ -20,24 +20,24 @@ export default function Ward() {
   const [activeTab, setActiveTab] = useState('admissions');
   const queryClient = useQueryClient();
 
-  const { data: patient } = useQuery({
+  const { data: patient = [] } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => patientService.get(patientId).then(r => r.data.patient),
     enabled: !!patientId,
   });
 
-  const { data: admissionData } = useQuery({
+  const { data: admissionData = [] } = useQuery({
     queryKey: ['admission', patientId],
     queryFn: () => wardService.getAdmission(patientId).then(r => r.data),
     enabled: !!patientId,
   });
 
-  const { data: beds } = useQuery({
+  const { data: beds = [] } = useQuery({
     queryKey: ['beds'],
     queryFn: () => wardService.getBeds().then(r => r.data.available_beds || []),
   });
 
-  const { data: searchResults } = useQuery({
+  const { data: searchResults = [] } = useQuery({
     queryKey: ['patientSearch', search],
     queryFn: () => patientService.search(search).then(r => r.data.patients || []),
     enabled: !!search,
@@ -86,7 +86,7 @@ export default function Ward() {
             onChange={e => setSearch(e.target.value)}
             className="input mb-4"
           />
-          {search && searchResults?.map(p => (
+          {search && searchResults.map(p => (
             <button 
               key={p.id} 
               onClick={() => setPatientId(p.id)}
@@ -184,7 +184,7 @@ export default function Ward() {
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Admission History</h4>
-                  {admissionData.admissions?.map(adm => (
+                  {admissionData.admissions.map(adm => (
                     <div key={adm.id} className="p-3 bg-gray-50 rounded-lg mb-2">
                       <div className="flex justify-between">
                         <span className="font-medium">{format(new Date(adm.admission_date), 'MMM dd, yyyy')}</span>
@@ -213,7 +213,7 @@ export default function Ward() {
       )}
 
       {activeTab === 'beds' && beds && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
           <div className="p-6 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">Bed Management</h2>
             <div className="flex gap-4 text-sm text-gray-600">
@@ -224,7 +224,7 @@ export default function Ward() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ward</th>
@@ -267,7 +267,7 @@ export default function Ward() {
               <h3 className="font-semibold">Recent Notes</h3>
             </div>
             <div className="divide-y divide-gray-200">
-              {admissionData.nursing_notes?.map(note => (
+              {admissionData.nursing_notes.map(note => (
                 <div key={note.id} className="p-6 hover:bg-gray-50">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-sm text-gray-500">{format(new Date(note.note_time), 'MMM dd, yyyy HH:mm')}</span>
@@ -287,17 +287,17 @@ export default function Ward() {
 
       {showAdmitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Admit Patient</h2>
               <button onClick={() => setShowAdmitModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); admitMutation.mutate({...admitData, patient_id: patientId }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); admitMutation.mutate({...admitData, patient_id: patientId }); }} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bed *</label>
                 <select required value={admitData.bed_id} onChange={e => setAdmitData({...admitData, bed_id: e.target.value})} className="input">
                   <option value="">Select Available Bed</option>
-                  {beds?.filter(b => b.status === 'Available').map(b => (
+                  {beds.filter(b => b.status === 'Available').map(b => (
                     <option key={b.id} value={b.id}>{b.ward_name} - {b.bed_number} ({b.bed_type})</option>
                   ))}
                 </select>
@@ -319,12 +319,12 @@ export default function Ward() {
 
       {showNoteModal && selectedAdmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Add Nursing Note</h2>
               <button onClick={() => setShowNoteModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); noteMutation.mutate(); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); noteMutation.mutate(); }} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Note *</label>
                 <textarea required value={noteData.note_text} onChange={e => setNoteData({...noteData, note_text: e.target.value})} rows={4} className="input" placeholder="Enter nursing observations..." />

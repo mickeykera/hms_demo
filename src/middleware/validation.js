@@ -1,6 +1,112 @@
 import { z } from 'zod';
 
 export const schemas = {
+  // ---------- Procurement ----------
+  supplier: z.object({
+    name: z.string().min(1, 'Supplier name is required'),
+    contact_person: z.string().optional(),
+    email: z.string().email().optional().or(z.literal('')),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    lead_time_days: z.coerce.number().int().min(0).optional(),
+    active: z.coerce.boolean().optional(),
+  }),
+
+  supplierUpdate: z.object({
+    name: z.string().min(1).optional(),
+    contact_person: z.string().optional(),
+    email: z.string().email().optional().or(z.literal('')),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    lead_time_days: z.coerce.number().int().min(0).optional(),
+    active: z.coerce.boolean().optional(),
+  }),
+
+  purchaseOrder: z.object({
+    supplier_id: z.coerce.number().int().positive(),
+    expected_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+    items: z.array(z.object({
+      medication_id: z.coerce.number().int().positive().optional(),
+      item_name: z.string().min(1, 'Item name is required'),
+      quantity: z.coerce.number().int().positive(),
+      unit_cost: z.coerce.number().min(0).default(0),
+    })).min(1, 'At least one line item is required'),
+  }),
+
+  // ---------- HR ----------
+  attendance: z.object({
+    personnel_id: z.coerce.number().int().positive(),
+    work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+    clock_in: z.string().optional(),
+    clock_out: z.string().optional(),
+    status: z.enum(['Present', 'Absent', 'Late', 'Leave', 'HalfDay']).default('Present'),
+    notes: z.string().optional(),
+  }),
+
+  leaveRequest: z.object({
+    personnel_id: z.coerce.number().int().positive(),
+    leave_type: z.enum(['Annual', 'Sick', 'Parental', 'Unpaid', 'Other']),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    days: z.coerce.number().positive(),
+    reason: z.string().optional(),
+  }),
+
+  leaveDecision: z.object({
+    status: z.enum(['Approved', 'Rejected', 'Cancelled']),
+  }),
+
+  payroll: z.object({
+    personnel_id: z.coerce.number().int().positive(),
+    pay_period: z.string().min(1, 'Pay period is required'),
+    basic_salary: z.coerce.number().min(0),
+    allowances: z.coerce.number().min(0).default(0),
+    deductions: z.coerce.number().min(0).default(0),
+    // net_pay is derived server-side; accepted here only for display parity.
+    net_pay: z.coerce.number().optional(),
+    status: z.enum(['Draft', 'Approved', 'Paid']).default('Draft'),
+  }),
+
+  performanceReview: z.object({
+    personnel_id: z.coerce.number().int().positive(),
+    review_period: z.string().min(1, 'Review period is required'),
+    rating: z.coerce.number().int().min(1).max(5).optional(),
+    strengths: z.string().optional(),
+    improvements: z.string().optional(),
+    goals: z.string().optional(),
+    status: z.enum(['Draft', 'Shared', 'Acknowledged']).default('Draft'),
+  }),
+
+  // ---------- Emergency ----------
+  ambulance: z.object({
+    unit_number: z.string().min(1, 'Unit number is required'),
+    vehicle_type: z.string().optional(),
+    crew_size: z.coerce.number().int().min(0).optional(),
+    status: z.enum(['Available', 'Dispatched', 'EnRoute', 'Returning', 'OutOfService']).default('Available'),
+    current_location: z.string().optional(),
+  }),
+
+  dispatch: z.object({
+    ambulance_id: z.coerce.number().int().positive().optional(),
+    incident_location: z.string().min(1, 'Incident location is required'),
+    incident_type: z.string().optional(),
+    priority: z.enum(['Routine', 'Urgent', 'Emergency', 'Critical']).default('Routine'),
+    patient_name: z.string().optional(),
+    destination: z.string().optional(),
+    eta_minutes: z.coerce.number().int().min(0).optional(),
+    notes: z.string().optional(),
+  }),
+
+  dispatchStatus: z.object({
+    status: z.enum(['Dispatched', 'EnRoute', 'AtScene', 'Returning', 'Completed', 'Cancelled']),
+  }),
+
+  // ---------- Settings ----------
+  systemSetting: z.object({
+    value: z.string().optional(),
+    category: z.string().optional(),
+  }),
+
   patientRegister: z.object({
     first_name: z.string().min(1, 'First name is required'),
     last_name: z.string().min(1, 'Last name is required'),
@@ -29,6 +135,23 @@ export const schemas = {
     diagnosis: z.string().optional(),
     treatment_plan: z.string().optional(),
     notes: z.string().optional(),
+    // SOAP sections. Optional individually so a note can be drafted
+    // incrementally; only Subjective/Assessment/Plan are enforced at signing.
+    subjective: z.string().optional(),
+    objective: z.string().optional(),
+    assessment: z.string().optional(),
+    plan: z.string().optional(),
+  }),
+
+  // Draft save of an existing note. chief_complaint stays optional here so a
+  // partially written note is never rejected by the autosave.
+  soapNote: z.object({
+    chief_complaint: z.string().optional(),
+    subjective: z.string().optional(),
+    objective: z.string().optional(),
+    assessment: z.string().optional(),
+    plan: z.string().optional(),
+    diagnosis: z.string().optional(),
   }),
 
   prescription: z.object({

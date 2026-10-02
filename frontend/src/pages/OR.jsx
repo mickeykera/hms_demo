@@ -8,6 +8,7 @@ import {
   Stethoscope, Pill, Trash2, Edit
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
   Scheduled: 'bg-blue-100 text-blue-800',
@@ -17,6 +18,7 @@ const statusColors = {
 };
 
 export default function OR() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('schedule');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -27,17 +29,17 @@ export default function OR() {
   const [reportData, setReportData] = useState({ procedure_notes: '', complications: '', outcome: '', surgeon_notes: '', post_op_care_instructions: '' });
   const queryClient = useQueryClient();
 
-  const { data: schedules } = useQuery({
+  const { data: schedules = [] } = useQuery({
     queryKey: ['orSchedules'],
     queryFn: () => orService.getSchedules ? orService.getSchedules() : Promise.resolve({ data: { schedules: [] } }).then(r => r.data.schedules || []),
   });
 
-  const { data: patients } = useQuery({
+  const { data: patients = [] } = useQuery({
     queryKey: ['orPatients'],
     queryFn: () => patientService.search('').then(r => r.data.patients || []),
   });
 
-  const { data: doctors } = useQuery({
+  const { data: doctors = [] } = useQuery({
     queryKey: ['orDoctors'],
     queryFn: () => clinicalService.getDoctors ? clinicalService.getDoctors() : Promise.resolve({ data: [] }).then(r => r.data || []),
   });
@@ -96,8 +98,8 @@ export default function OR() {
       </div>
 
       {activeTab === 'schedule' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date/Time</th>
@@ -111,7 +113,7 @@ export default function OR() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {schedules?.map(s => (
+              {schedules.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-900">{format(new Date(s.scheduled_date), 'MMM dd, yyyy HH:mm')}</td>
                   <td className="px-6 py-4">
@@ -126,7 +128,7 @@ export default function OR() {
                       {s.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{s.team?.length || 0} members</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{s.team.length || 0} members</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <button onClick={() => { setSelectedSchedule(s); setShowTeamModal(true); }} className="text-blue-600 hover:text-blue-900 text-sm font-medium">
@@ -154,7 +156,7 @@ export default function OR() {
 
       {activeTab === 'upcoming' && (
         <div className="space-y-4">
-          {schedules?.filter(s => s.status === 'Scheduled').map(s => (
+          {schedules.filter(s => s.status === 'Scheduled').map(s => (
             <div key={s.id} className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
               <div className="flex justify-between items-start">
                 <div>
@@ -173,7 +175,7 @@ export default function OR() {
               </div>
             </div>
           ))}
-          {schedules?.filter(s => s.status === 'Scheduled').length === 0 && (
+          {schedules.filter(s => s.status === 'Scheduled').length === 0 && (
             <p className="text-gray-500 text-center py-8">No upcoming surgeries</p>
           )}
         </div>
@@ -181,7 +183,7 @@ export default function OR() {
 
       {activeTab === 'completed' && (
         <div className="space-y-4">
-          {schedules?.filter(s => s.status === 'Completed').map(s => (
+          {schedules.filter(s => s.status === 'Completed').map(s => (
             <div key={s.id} className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
               <div className="flex justify-between items-start">
                 <div>
@@ -189,7 +191,7 @@ export default function OR() {
                   <p className="text-gray-500">{s.patient?.first_name} {s.patient?.last_name} • {format(new Date(s.scheduled_date), 'MMM dd, yyyy')}</p>
                   <p className="text-sm text-gray-600 mt-1">Surgeon: Dr. {s.surgeon?.last_name} • Outcome: {s.surgical_report?.outcome || 'N/A'}</p>
                 </div>
-                <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                <button onClick={() => { setSelectedSchedule(s); setShowReportModal(true); }} className="text-blue-600 hover:text-blue-900 text-sm font-medium">
                   <FileText className="w-4 h-4 inline mr-1" /> View Report
                 </button>
               </div>
@@ -201,7 +203,7 @@ export default function OR() {
               )}
             </div>
           ))}
-          {schedules?.filter(s => s.status === 'Completed').length === 0 && (
+          {schedules.filter(s => s.status === 'Completed').length === 0 && (
             <p className="text-gray-500 text-center py-8">No completed surgeries</p>
           )}
         </div>
@@ -209,32 +211,32 @@ export default function OR() {
 
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-4 max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Schedule Surgery</h2>
               <button onClick={() => setShowScheduleModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); scheduleMutation.mutate(scheduleData); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); scheduleMutation.mutate(scheduleData); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
                   <select required value={scheduleData.patient_id} onChange={e => setScheduleData({...scheduleData, patient_id: e.target.value})} className="input">
                     <option value="">Select Patient</option>
-                    {patients?.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.global_id})</option>)}
+                    {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.global_id})</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Surgeon *</label>
                   <select required value={scheduleData.surgeon_id} onChange={e => setScheduleData({...scheduleData, surgeon_id: e.target.value})} className="input">
                     <option value="">Select Surgeon</option>
-                    {doctors?.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name} ({d.department})</option>)}
+                    {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name} ({d.department})</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Anesthesiologist</label>
                   <select value={scheduleData.anesthesiologist_id} onChange={e => setScheduleData({...scheduleData, anesthesiologist_id: e.target.value})} className="input">
                     <option value="">Select (Optional)</option>
-                    {doctors?.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name}</option>)}
+                    {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -263,14 +265,14 @@ export default function OR() {
 
       {showTeamModal && selectedSchedule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Surgical Team - {selectedSchedule.procedure_name}</h2>
               <button onClick={() => setShowTeamModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <h3 className="font-semibold">Current Team</h3>
-              {selectedSchedule.team?.map(member => (
+              {selectedSchedule.team.map(member => (
                 <div key={member.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium">Dr. {member.user?.last_name}</p>
@@ -281,12 +283,12 @@ export default function OR() {
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3">Add Team Member</h3>
                 <form onSubmit={e => { e.preventDefault(); teamMutation.mutate(); }} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Member *</label>
                       <select required value={teamData.member_id} onChange={e => setTeamData({...teamData, member_id: e.target.value})} className="input">
                         <option value="">Select</option>
-                        {doctors?.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name} ({d.department})</option>)}
+                        {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name} ({d.department})</option>)}
                       </select>
                     </div>
                     <div>
@@ -314,7 +316,7 @@ export default function OR() {
               <h2 className="text-xl font-semibold">Post-Operative Report</h2>
               <button onClick={() => setShowReportModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); reportMutation.mutate(); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); reportMutation.mutate(); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Procedure Notes *</label>

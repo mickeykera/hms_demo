@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import NotificationBell from './NotificationBell';
 import {
-  LayoutDashboard, Users, Stethoscope, DollarSign, FlaskConical, Bed, 
-  Cpu, Scissors, Calendar, Pill, LogOut, Menu, X, ChevronDown, 
+  LayoutDashboard, Users, Stethoscope, DollarSign, FlaskConical, Bed,
+  Cpu, Scissors, Calendar, Pill, LogOut, Menu, X,
+  PanelLeftClose, PanelLeftOpen,
   Home, Settings, Bell, User, Search, Heart, Activity, Microscope,
   TestTube, Package, Truck, Shield, Building2, FileText, BarChart2,
   Key, Lock, Unlock, Award, Clock, Briefcase, RotateCcw, Box,
   Ambulance, Cross, Zap, Flag as FlagIcon, HeartPulse, UserPlus, UserCheck, UserX,
 } from 'lucide-react';
+
+// NOTE: XRay is not exported by lucide-react, and the icons below are declared
+// as local stubs further down. Do not import them from lucide-react - doing so
+// collides with the local declarations and breaks the build.
 
 const roleNavigation = {
   SuperAdmin: [
@@ -169,6 +177,16 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
+
+  // Feeds the header notification bell. Scoped to the signed-in user and
+  // marked unread-only, matching what the dashboards already fetch.
+  const { data: headerNotifications = [] } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: () => api.get('/notifications', { params: { unread: true } })
+      .then(r => r.data.notifications || []).catch(() => []),
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -177,107 +195,172 @@ export default function Layout() {
     ? '/admin/settings'
     : '/settings';
 
+  const displayName = user?.full_name || 'User';
+  const displayRole = user?.displayRole || (user?.role ? user.role.toLowerCase().replace(/([A-Z])/g, ' $1') : '');
+
+  // Allow dismissing the mobile drawer with the Escape key.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'}`}>
+    <div className="min-h-screen bg-surface-alt">
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={[
+          'fixed inset-y-0 left-0 z-40 w-64 shrink-0 bg-white border-r',
+          'transition-transform duration-300 ease-in-out',
+          // Mobile: overlay drawer, only visible when opened.
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          // md+ : persistent sidebar driven by the collapse toggle.
+          sidebarOpen ? 'md:translate-x-0' : 'md:-translate-x-full',
+        ].join(' ')}
+      >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between h-16 px-4 border-b">
-            <h1 className="text-xl font-bold text-blue-600">HMS</h1>
-            <button 
-              className="lg:hidden p-2 rounded" 
+          {/* Logo */}
+          <div className="flex items-center justify-between h-16 px-4 border-b border-border pt-[env(safe-area-inset-top)]">
+            <div className="flex items-center">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+                <Stethoscope className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="ml-2">
+                <span className="text-lg font-bold text-gray-900">HMS</span>
+                <span className="block text-xs text-gray-500 -mt-0.5">Hospital Management</span>
+              </div>
+            </div>
+            <button
+              className="md:hidden p-2 -mr-2 rounded-md text-gray-600 hover:bg-gray-100"
               onClick={() => setMobileOpen(false)}
+              aria-label="Close navigation menu"
             >
               <X size={20} />
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
             {navigation.map(({ path, label, icon: Icon }) => (
               <NavLink
                 key={path}
                 to={path}
-                className={({ isActive }) => 
-                  `flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-blue-50 text-blue-600' 
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-lg mx-1 transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-600'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`
                 }
-                onClick={() => setMobileOpen(false)}
               >
-                <Icon className="w-5 h-5 mr-3" />
-                {label}
+                <Icon className="w-5 h-5 shrink-0" />
+                <span>{label}</span>
               </NavLink>
             ))}
           </nav>
-          <div className="p-4 border-t">
-            <div className="flex items-center mb-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-600" />
+
+          {/* User info & logout */}
+          <div className="p-4 border-t border-border pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                <User className="w-5 h-5 text-blue-600" />
               </div>
-              <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user?.full_name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.displayRole || user?.role?.toLowerCase()}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
+                <p className="text-xs text-gray-500 capitalize">{displayRole}</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={logout}
-              className="w-full flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="flex items-center gap-3 w-full px-3.5 py-2.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition"
             >
-              <LogOut className="w-5 h-5 mr-3" />
-              Logout
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span>Logout</span>
             </button>
           </div>
         </div>
       </aside>
 
-      <div className={sidebarOpen ? 'lg:pl-64' : 'lg:pl-0'}>
-        <header className="sticky top-0 z-40 bg-white shadow-sm">
+      {/* Padding-left tracks the sidebar. Without a transition the content area
+          snapped to full width while the sidebar was still animating, which
+          read as the dashboard "stretching" during collapse. */}
+      <div
+        className={[
+          'transition-[padding] duration-300 ease-in-out',
+          sidebarOpen ? 'md:pl-64' : 'md:pl-0',
+        ].join(' ')}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-white border-b border-border pt-[env(safe-area-inset-top)]">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
-            <div className="flex items-center">
-              <button 
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100"
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                className="md:hidden p-2 -ml-2 rounded-md text-gray-600 hover:bg-gray-100"
                 onClick={() => setMobileOpen(true)}
+                aria-label="Open navigation menu"
               >
                 <Menu size={24} />
               </button>
-              <button 
-                className="hidden lg:block p-2 rounded-md text-gray-600 hover:bg-gray-100"
+              <button
+                className="hidden md:block p-2 rounded-md text-gray-600 hover:bg-gray-100"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label={sidebarOpen ? 'Collapse navigation sidebar' : 'Expand navigation sidebar'}
+                aria-expanded={sidebarOpen}
               >
-                {sidebarOpen ? <ChevronDown size={24} /> : <Menu size={24} />}
+                {sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
               </button>
+              <h1 className="text-xl font-semibold text-gray-800 hidden sm:block truncate">
+                {location.pathname.split('/').pop().replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase()) || 'Dashboard'}
+              </h1>
             </div>
-            <div className="flex items-center space-x-4">
+
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <div className="relative hidden sm:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search..." 
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-64 pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <button className="p-2 rounded-full text-gray-600 hover:bg-gray-100 relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
+              <NotificationBell notifications={headerNotifications} />
               <button
                 className="p-2 rounded-full text-gray-600 hover:bg-gray-100"
                 onClick={() => navigate(settingsPath)}
                 title="Open settings"
+                aria-label="Open settings"
               >
                 <Settings className="w-5 h-5" />
               </button>
+              {/* Always-available escape hatch: switch user / get back to
+                  the login screen without hunting for the sidebar. */}
+              <button
+                className="p-2 rounded-full text-gray-600 hover:bg-gray-100"
+                onClick={logout}
+                title="Sign out and return to login"
+                aria-label="Sign out and return to login"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                <User className="w-4 h-4 text-blue-600" />
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8">
-          {mobileOpen && (
-            <div 
-              className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-              onClick={() => setMobileOpen(false)}
-            />
-          )}
+        <main className="p-4 sm:p-6 lg:p-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
           <Outlet />
         </main>
       </div>

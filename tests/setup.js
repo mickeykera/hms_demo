@@ -13,18 +13,20 @@ export function initTestDb() {
   
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const testDbPath = join(__dirname, '..', 'test-hospital.db');
+  // DB_PATH is set per worker by tests/test-env.js, so each worker gets its own
+  // file and no two processes contend for the same SQLite write lock.
+  const testDbPath = process.env.DB_PATH || join(__dirname, '..', 'test-hospital.db');
   
   testDb = new DatabaseSync(testDbPath);
   testDb.exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
-  
+
   const schemaPath = join(__dirname, '..', 'src', 'config', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   testDb.exec(schema);
-  
+
   // Inject the test database into the models
   setTestDatabase(testDb);
-  
+
   return testDb;
 }
 

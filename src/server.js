@@ -20,6 +20,9 @@ import orRoutes from './modules/or/routes.js';
 import appointmentsRoutes from './modules/appointments/routes.js';
 import pharmacyRoutes from './modules/pharmacy/routes.js';
 import radiologyRoutes from './modules/radiology/routes.js';
+import procurementRoutes from './modules/procurement/routes.js';
+import hrRoutes from './modules/hr/routes.js';
+import emergencyRoutes from './modules/emergency/routes.js';
 import patientRoutes from './modules/patient/routes.js';
 import notificationsRoutes from './modules/notifications/routes.js';
 import messagesRoutes from './modules/messages/routes.js';
@@ -32,6 +35,7 @@ import wardsRoutes from './modules/wards/routes.js';
 import dashboardsRoutes from './modules/dashboards/routes.js';
 import auditRoutes from './modules/audit/routes.js';
 import navigationRoutes from './modules/navigation/routes.js';
+import adminRoutes from './modules/admin/routes.js';
 import { authenticate, authorize, getPermissionsForRole } from './middleware/rbac.js';
 import { validate } from './middleware/validation.js';
 import { errorHandler, notFoundHandler, asyncHandler, AppError } from './middleware/errorHandler.js';
@@ -40,6 +44,7 @@ import { logResourceAction } from './middleware/auditLog.js';
 import { getDb, getUserByUsername } from './models/index.js';
 import { swaggerSpec } from './config/swagger.js';
 import { seedDemoData } from './config/seed.js';
+import { runMigrations } from './config/migrations.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -142,6 +147,10 @@ app.use('/api/or', orRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/radiology', radiologyRoutes);
+// Operational modules backing the dashboards' procurement, HR and ED tabs.
+app.use('/api/procurement', procurementRoutes);
+app.use('/api/hr', hrRoutes);
+app.use('/api/emergency', emergencyRoutes);
 
 // RBAC & Administration routes
 app.use('/api/personnel', personnelRoutes);
@@ -150,6 +159,7 @@ app.use('/api/departments', departmentsRoutes);
 app.use('/api/requests', requestsRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/wards', wardsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Notification, messaging, and patient portal
 app.use('/api/notifications', notificationsRoutes);
@@ -158,6 +168,19 @@ app.use('/api/patient', patientRoutes);
 app.use('/api/dashboards', dashboardsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/navigation', navigationRoutes);
+
+// Nothing else in the app runs migrations -- the Docker entrypoint and
+// `npm start` both go straight to `node src/server.js`. Migration 20261002
+// creates every operational table (suppliers, purchase_orders, ambulances,
+// dispatches, system_settings and the four HR tables), so without this a
+// freshly provisioned database would 500 on all of those routes.
+//
+// Skipped under Vitest: the harness builds its own schema in tests/setup.js
+// and does not use migrations, and running them here would write to the
+// developer's real database as a side effect of importing the app.
+if (!process.env.VITEST) {
+  await runMigrations();
+}
 
 if (process.env.SEED_DEMO_DATA === 'true') seedDemoData();
 

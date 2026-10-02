@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import fs from 'node:fs';
+import { getDb } from '../models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,6 +11,14 @@ const dbPath = process.env.DB_PATH || join(__dirname, '..', '..', 'hospital.db')
 const migrationsPath = join(__dirname, 'migrations');
 
 export async function runMigrations() {
+  // The base schema has to exist before any migration file runs: 20261001
+  // indexes consultations.status, and 20261002 creates tables that reference
+  // base ones. models/index.js creates/opens the database and applies
+  // schema.sql (entirely CREATE ... IF NOT EXISTS, so safe to re-apply) plus
+  // the column backfills as soon as it is imported. Without this step
+  // `npm run migrate` on a virgin database failed with "no such table".
+  getDb();
+
   const db = new DatabaseSync(dbPath);
   db.exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
 

@@ -1,8 +1,12 @@
 node_modules/
 frontend/dist/
-.env
-.env.production
+
+# Local secrets at the repo root only. frontend/.env.production is intentionally
+# NOT ignored: it holds VITE_API_BASE=/api, which the Docker build needs so the
+# bundle targets the same-origin API instead of http://localhost:3000/api.
+/.env
 .env.local
+/.env.production
 *.local
 
 *.db

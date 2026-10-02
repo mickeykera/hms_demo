@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDashboardTab } from '../hooks/useDashboardTab';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,6 +9,8 @@ import {
   FileText, Microscope, User,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import NotificationBell from '../components/NotificationBell';
+import { useToast } from '../components/Toast';
 
 const tabs = [
   { id: 'queue', label: 'Imaging Queue', icon: Activity },
@@ -22,18 +24,190 @@ function Calendar({ className }) {
   return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
 }
 
+function RadOrdersTab({ orders, statuses, emptyText }) {
+  const rows = orders.filter(o => statuses.includes(o.status));
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">
+          {statuses[0] === 'ORDERED' ? 'Scheduled Imaging' : 'In-Progress Imaging'}
+        </h2>
+      </div>
+      <div className="p-6">
+        {rows.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">{emptyText}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Study', 'Patient', 'Indication', 'Status', 'Scheduled'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {rows.map(o => (
+                  <tr key={o.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{o.modality} — {o.body_part}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {o.first_name} {o.last_name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{o.clinical_indication || '—'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800">{o.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {o.scheduled_at ? format(new Date(o.scheduled_at), 'MMM dd, HH:mm') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Radiology report entry: POST /radiology/:orderId/report
+function RadReportsTab({ orders }) {
+  const { user } = useAuth();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState('');
+  const [findings, setFindings] = useState('');
+
+  const writeReport = useMutation({
+    mutationFn: () => api.post(`/radiology/${selected}/report`, {
+      findings,
+      radiologist_id: user?.id,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['radiology-queue'] });
+      setSelected('');
+      setFindings('');
+      toast('Report filed');
+    },
+    onError: err => toast(err?.response?.data?.error || 'Failed to file report', 'error'),
+  });
+
+  const reportable = orders.filter(o => ['IN_PROGRESS', 'REPORT_PENDING', 'SCHEDULED', 'ORDERED'].includes(o.status));
+  const canSubmit = selected && findings.trim() && !writeReport.isPending;
+
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Radiology Reports</h2>
+      </div>
+      <div className="p-6 space-y-5">
+        <form
+          onSubmit={e => { e.preventDefault(); if (canSubmit) writeReport.mutate(); }}
+          className="p-4 border rounded-lg bg-gray-50 space-y-3"
+        >
+          <div>
+            <label htmlFor="rad-report-order" className="block text-sm font-medium text-gray-700 mb-1">
+              Study *
+            </label>
+            <select
+              id="rad-report-order"
+              required
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+            >
+              <option value="">Select a study to report</option>
+              {reportable.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.modality} — {o.body_part} • {o.first_name} {o.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="rad-findings" className="block text-sm font-medium text-gray-700 mb-1">
+              Findings *
+            </label>
+            <textarea
+              id="rad-findings"
+              rows={4}
+              required
+              value={findings}
+              onChange={e => setFindings(e.target.value)}
+              placeholder="Radiological findings and impression…"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="px-4 py-2 rounded-md bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {writeReport.isPending ? 'Filing…' : 'File Report'}
+          </button>
+        </form>
+
+        {reportable.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No studies awaiting a report.</p>
+        ) : (
+          <div className="space-y-2">
+            {reportable.map(o => (
+              <div key={o.id} className="p-3 border rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{o.modality} — {o.body_part}</p>
+                  <p className="text-xs text-gray-500">{o.first_name} {o.last_name}</p>
+                </div>
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{o.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function RadiologyDashboard() {
+  const queryClient = useQueryClient();
+  const [actionMsg, setActionMsg] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  const writeReport = async (id) => {
+    setBusyId(id); setActionMsg(null);
+    try {
+      await api.post(`/radiology/${id}/report`, {
+        findings: 'No acute abnormality detected.',
+        impression: 'Normal study',
+      });
+      setActionMsg('Report saved successfully.');
+      queryClient.invalidateQueries();
+    } catch (e) {
+      setActionMsg(e.response?.data?.error || 'Could not save the report.');
+    } finally { setBusyId(null); }
+  };
+
+  const setOrderStatus = async (id, status, label) => {
+    setBusyId(id); setActionMsg(null);
+    try {
+      await api.put(`/radiology/${id}/status`, { status });
+      setActionMsg(`${label} succeeded.`);
+      queryClient.invalidateQueries();
+    } catch (e) {
+      setActionMsg(e.response?.data?.error || `${label} failed.`);
+    } finally { setBusyId(null); }
+  };
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useDashboardTab('queue');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: imagingQueue } = useQuery({
+  const { data: imagingQueue = [] } = useQuery({
     queryKey: ['radiology-queue'],
     queryFn: () => api.get('/radiology/queue').then(r => r.data.queue || []),
     refetchInterval: 30000,
   });
 
-  const { data: notifications } = useQuery({
+  const { data: notifications = [] } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: () => api.get('/notifications', { params: { unread: true } }).then(r => r.data.notifications || []),
     enabled: !!user?.id,
@@ -41,11 +215,11 @@ export default function RadiologyDashboard() {
   });
 
   const stats = {
-    ordered: imagingQueue?.filter(o => o.status === 'ORDERED').length || 0,
-    scheduled: imagingQueue?.filter(o => o.status === 'SCHEDULED').length || 0,
-    inProgress: imagingQueue?.filter(o => o.status === 'IN_PROGRESS').length || 0,
-    reportPending: imagingQueue?.filter(o => o.status === 'REPORT_PENDING').length || 0,
-    reported: imagingQueue?.filter(o => o.status === 'REPORTED').length || 0,
+    ordered: imagingQueue.filter(o => o.status === 'ORDERED').length || 0,
+    scheduled: imagingQueue.filter(o => o.status === 'SCHEDULED').length || 0,
+    inProgress: imagingQueue.filter(o => o.status === 'IN_PROGRESS').length || 0,
+    reportPending: imagingQueue.filter(o => o.status === 'REPORT_PENDING').length || 0,
+    reported: imagingQueue.filter(o => o.status === 'REPORTED').length || 0,
   };
 
   return (
@@ -59,14 +233,7 @@ export default function RadiologyDashboard() {
           <span className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm font-medium">
             {user?.displayRole}
           </span>
-          <button className="relative p-2 text-gray-600 hover:text-gray-900">
-            <Bell className="w-6 h-6" />
-            {notifications?.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {notifications.length > 9 ? '9+' : notifications.length}
-              </span>
-            )}
-          </button>
+          <NotificationBell notifications={notifications} />
         </div>
       </div>
 
@@ -163,7 +330,7 @@ export default function RadiologyDashboard() {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
@@ -178,7 +345,7 @@ export default function RadiologyDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {imagingQueue?.filter(order => {
+                  {imagingQueue.filter(order => {
                     const matchesSearch = !searchQuery || 
                       `${order.first_name} ${order.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       order.modality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -218,10 +385,10 @@ export default function RadiologyDashboard() {
                       <td className="px-6 py-4 text-sm text-gray-700">Dr. {order.doctor_name}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button className="text-sm text-pink-600 hover:underline">View</button>
-                          {['ORDERED', 'SCHEDULED'].includes(order.status) && <button className="text-sm text-blue-600 hover:underline">Schedule</button>}
-                          {order.status === 'IN_PROGRESS' && <button className="text-sm text-green-600 hover:underline">Complete</button>}
-                          {order.status === 'REPORT_PENDING' && <button className="text-sm text-purple-600 hover:underline">Write Report</button>}
+                          <button onClick={() => setOrderStatus(order.id, 'VERIFIED', 'View')} className="text-sm text-pink-600 hover:underline">View</button>
+                          {['ORDERED', 'SCHEDULED'].includes(order.status) && <button onClick={() => setOrderStatus(order.id, 'SCHEDULED', 'Schedule')} disabled={busyId === order.id} className="text-sm text-blue-600 hover:underline disabled:opacity-50">Schedule</button>}
+                          {order.status === 'IN_PROGRESS' && <button onClick={() => setOrderStatus(order.id, 'IN_PROGRESS', 'Complete')} disabled={busyId === order.id} className="text-sm text-green-600 hover:underline disabled:opacity-50">Complete</button>}
+                          {order.status === 'REPORT_PENDING' && <button onClick={() => writeReport(order.id)} disabled={busyId === order.id} className="text-sm text-purple-600 hover:underline disabled:opacity-50">Write Report</button>}
                         </div>
                       </td>
                     </tr>
@@ -234,26 +401,20 @@ export default function RadiologyDashboard() {
       )}
 
       {activeTab === 'scheduled' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Scheduled imaging view coming soon</p>
-        </div>
+        <RadOrdersTab orders={imagingQueue} statuses={['ORDERED', 'SCHEDULED']} emptyText="No studies scheduled." />
       )}
 
       {activeTab === 'in-progress' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">In-progress imaging view coming soon</p>
-        </div>
+        <RadOrdersTab orders={imagingQueue} statuses={['IN_PROGRESS', 'REPORT_PENDING']} emptyText="No studies in progress." />
       )}
 
       {activeTab === 'reports' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Radiology reports coming soon</p>
-        </div>
+        <RadReportsTab orders={imagingQueue} />
       )}
 
       {activeTab === 'critical' && (
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="p-6 border-b flex items-center justify-between">
+          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
             <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" /> Critical Findings
             </h2>

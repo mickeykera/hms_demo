@@ -156,6 +156,16 @@ CREATE TABLE IF NOT EXISTS consultations (
   diagnosis TEXT,
   treatment_plan TEXT,
   notes TEXT,
+  -- SOAP charting sections
+  subjective TEXT,
+  objective TEXT,
+  assessment TEXT,
+  plan TEXT,
+  -- Draft until a clinician signs the encounter. Existing rows are marked
+  -- Signed by the migration so historical notes are not shown as pending.
+  status TEXT NOT NULL DEFAULT 'Draft',
+  signed_at DATETIME,
+  updated_at DATETIME,
   consultation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (visit_id) REFERENCES visits(id),
   FOREIGN KEY (patient_id) REFERENCES patients(id),

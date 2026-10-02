@@ -54,6 +54,17 @@ export const clinicalService = {
   getPrescriptions: (patientId) => api.get(`/clinical/${patientId}/prescriptions`),
   getEMR: (patientId) => api.get(`/clinical/${patientId}/emr`),
   getDoctors: () => api.get('/clinical/doctors').then((res) => res.data.doctors || []),
+  // SOAP charting
+  startConsult: (data) => api.post('/clinical/consult', data),
+  saveSoapDraft: (consultationId, data) =>
+    api.put(`/clinical/consultations/${consultationId}/soap`, data),
+  signSoap: (consultationId) => api.post(`/clinical/consultations/${consultationId}/sign`),
+  openVisit: (patientId) => api.post(`/clinical/${patientId}/visit`),
+};
+
+export const radiologyService = {
+  order: (data) => api.post('/radiology/order', data),
+  getPending: (doctorId) => api.get(`/radiology/doctor/${doctorId}/pending`),
 };
 
 export const billingService = {

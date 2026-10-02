@@ -8,9 +8,13 @@
     "build": "npm --prefix frontend run build",
     "seed": "node scripts/seed.js",
     "test": "vitest run",
+    "test:e2e": "npm run build && vitest run --config vitest.config.e2e.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "lint": "npm --prefix frontend exec -- oxlint -c .oxlintrc.json src/",
     "migrate": "node -e \"import('./src/config/migrations.js').then(m => m.runMigrations())\"",
+    "seed:demo": "node scripts/seedDemoData.js",
+    "db:reset": "node scripts/resetDemoDb.js",
     "migrate:create": "node -e \"import('./src/config/migrations.js').then(m => m.createMigration(process.argv[2] || 'migration'))\""
   },
   "keywords": [],

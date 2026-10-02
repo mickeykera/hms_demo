@@ -4,7 +4,8 @@ import { pharmacyService, clinicalService } from '../services/api';
 import { 
   Plus, Search, Eye, Pill, Package, AlertTriangle, 
   Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight,
-  Download, Trash2, Edit, Clock, AlertCircle as AlertCircleIcon
+  Download, Trash2, Edit, Clock, AlertCircle as AlertCircleIcon,
+  AlertCircle
 } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 
@@ -26,22 +27,22 @@ export default function Pharmacy() {
   const [selectedPrescription, setSelectedPrescription] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: medications } = useQuery({
+  const { data: medications = [] } = useQuery({
     queryKey: ['medications'],
     queryFn: () => pharmacyService.getMedications().then(r => r.data.medications || []),
   });
 
-  const { data: inventory } = useQuery({
+  const { data: inventory = [] } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => pharmacyService.getInventory().then(r => r.data.inventory || []),
   });
 
-  const { data: lowStock } = useQuery({
+  const { data: lowStock = [] } = useQuery({
     queryKey: ['lowStock'],
     queryFn: () => pharmacyService.lowStock(10).then(r => r.data.low_stock || []),
   });
 
-  const { data: expiring } = useQuery({
+  const { data: expiring = [] } = useQuery({
     queryKey: ['expiring'],
     queryFn: () => pharmacyService.expiring(30).then(r => r.data.expiring_soon || []),
   });
@@ -97,8 +98,8 @@ export default function Pharmacy() {
             <input type="text" placeholder="Search medications..." className="input w-64" />
             <button onClick={() => setShowMedModal(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Medication</button>
           </div>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -146,8 +147,8 @@ export default function Pharmacy() {
             <input type="text" placeholder="Search inventory..." className="input w-64" />
             <button onClick={() => setShowInvModal(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Stock</button>
           </div>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Medication</th>
@@ -211,9 +212,9 @@ export default function Pharmacy() {
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-red-600" /> Low Stock Alerts
                 </h2>
-                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">{lowStock?.length || 0} items</span>
+                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">{lowStock.length || 0} items</span>
               </div>
-              {lowStock?.map(item => (
+              {lowStock.map(item => (
                 <div key={item.id} className="p-3 bg-red-50 rounded-lg border-l-4 border-red-500 mb-3">
                   <p className="font-medium text-red-800">{item.medication_name}</p>
                   <p className="text-sm text-red-600">Qty: {item.quantity} | Threshold: 10</p>
@@ -227,9 +228,9 @@ export default function Pharmacy() {
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <Clock className="w-5 h-5 text-yellow-600" /> Expiring Soon
                 </h2>
-                <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">{expiring?.length || 0} items</span>
+                <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">{expiring.length || 0} items</span>
               </div>
-              {expiring?.map(item => {
+              {expiring.map(item => {
                 const days = Math.ceil((new Date(item.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
                 return (
                   <div key={item.id} className="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500 mb-3">
@@ -246,12 +247,12 @@ export default function Pharmacy() {
 
       {showMedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">{editingMed ? 'Edit Medication' : 'Add Medication'}</h2>
               <button onClick={() => { setShowMedModal(false); setEditingMed(null); resetMedForm(); }} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); medMutation.mutate({...medData, unit_price: parseFloat(medData.unit_price) || null, requires_prescription: medData.requires_prescription, controlled_substance: medData.controlled_substance }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); medMutation.mutate({...medData, unit_price: parseFloat(medData.unit_price) || null, requires_prescription: medData.requires_prescription, controlled_substance: medData.controlled_substance }); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
@@ -306,18 +307,18 @@ export default function Pharmacy() {
 
       {showInvModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Add Inventory Stock</h2>
               <button onClick={() => { setShowInvModal(false); resetInvForm(); }} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); invMutation.mutate({...invData, quantity: parseInt(invData.quantity), unit_cost: parseFloat(invData.unit_cost) || null }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); invMutation.mutate({...invData, quantity: parseInt(invData.quantity), unit_cost: parseFloat(invData.unit_cost) || null }); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Medication *</label>
                   <select required value={invData.medication_id} onChange={e => setInvData({...invData, medication_id: e.target.value})} className="input">
                     <option value="">Select Medication</option>
-                    {medications?.map(m => <option key={m.id} value={m.id}>{m.name} ({m.strength} {m.form})</option>)}
+                    {medications.map(m => <option key={m.id} value={m.id}>{m.name} ({m.strength} {m.form})</option>)}
                   </select>
                 </div>
                 <div>
@@ -354,12 +355,12 @@ export default function Pharmacy() {
 
       {showDispenseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Dispense Medication</h2>
               <button onClick={() => { setShowDispenseModal(false); resetDispenseForm(); }} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); dispenseMutation.mutate({...dispenseData, quantity: parseInt(dispenseData.quantity) }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); dispenseMutation.mutate({...dispenseData, quantity: parseInt(dispenseData.quantity) }); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Prescription *</label>
@@ -372,7 +373,7 @@ export default function Pharmacy() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Medication *</label>
                   <select required value={dispenseData.medication_id} onChange={e => setDispenseData({...dispenseData, medication_id: e.target.value})} className="input">
                     <option value="">Select Medication</option>
-                    {medications?.map(m => <option key={m.id} value={m.id}>{m.name} ({m.strength} {m.form})</option>)}
+                    {medications.map(m => <option key={m.id} value={m.id}>{m.name} ({m.strength} {m.form})</option>)}
                   </select>
                 </div>
                 <div>

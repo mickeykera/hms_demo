@@ -7,7 +7,10 @@ const router = Router();
 
 router.get('/', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse']), (req, res) => {
   const { doctor_id, patient_id, date, status } = req.query;
-  let query = 'SELECT a.*, p.first_name as patient_first, p.last_name as patient_last, d.first_name as doctor_first, d.last_name as doctor_last FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN users d ON a.doctor_id = d.id WHERE 1=1';
+  // NOTE: `users` stores a single `full_name` column - there are no
+  // first_name/last_name columns on that table. Selecting those raised
+  // "no such column" and 500'd this endpoint.
+  let query = 'SELECT a.*, p.first_name as patient_first, p.last_name as patient_last, d.full_name as doctor_first, d.full_name as doctor_last FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN users d ON a.doctor_id = d.id WHERE 1=1';
   const params = [];
 
   if (doctor_id) {
@@ -53,7 +56,7 @@ router.post('/', authorize(['Receptionist', 'Admin', 'Doctor']), validate('appoi
 
 router.get('/:id', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse']), (req, res) => {
   const appointment = db.getDb().prepare(
-    'SELECT a.*, p.first_name as patient_first, p.last_name as patient_last, p.global_id as patient_global_id, d.first_name as doctor_first, d.last_name as doctor_last FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN users d ON a.doctor_id = d.id WHERE a.id = ?'
+    'SELECT a.*, p.first_name as patient_first, p.last_name as patient_last, p.global_id as patient_global_id, d.full_name as doctor_first, d.full_name as doctor_last FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN users d ON a.doctor_id = d.id WHERE a.id = ?'
   ).get(req.params.id);
   if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
   res.json({ appointment });

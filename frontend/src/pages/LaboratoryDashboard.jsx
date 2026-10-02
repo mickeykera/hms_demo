@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDashboardTab } from '../hooks/useDashboardTab';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,6 +9,8 @@ import {
   Package, Droplet, Microscope, TrendingUp, FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import NotificationBell from '../components/NotificationBell';
+import { useNavigate } from 'react-router-dom';
 
 const tabs = [
   { id: 'queue', label: 'Test Queue', icon: FlaskConical },
@@ -19,25 +21,231 @@ const tabs = [
   { id: 'inventory', label: 'Inventory', icon: Package },
 ];
 
+// Lab tabs. `queue` is the shared /lab/queue/pending payload; each tab filters
+// it client-side by the lifecycle stage it represents.
+const SAMPLES_STATUSES = ['Ordered', 'CollectionPending'];
+const IN_PROGRESS_STATUSES = ['Collected', 'InProgress'];
+const RESULTS_STATUSES = ['Verified', 'Released'];
+
+function LabQueueTable({ tests, onStatus, busyId, emptyText, actionLabel }) {
+  if (!tests.length) {
+    return <p className="text-gray-500 text-center py-8">{emptyText}</p>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px]">
+        <thead className="bg-gray-50">
+          <tr>
+            {['Test', 'Type', 'Sample ID', 'Status', 'Ordered', ''].map((h, i) => (
+              <th key={i} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {tests.map(t => (
+            <tr key={t.id} className="hover:bg-gray-50">
+              <td className="px-4 py-3 text-sm font-medium text-gray-900">{t.test_name}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{t.test_type || '—'}</td>
+              <td className="px-4 py-3 text-sm text-gray-500">{t.sample_id || '—'}</td>
+              <td className="px-4 py-3 text-sm">
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">{t.status}</span>
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-500">
+                {t.ordered_at ? format(new Date(t.ordered_at), 'MMM dd, HH:mm') : '—'}
+              </td>
+              <td className="px-4 py-3 text-sm">
+                {onStatus && (
+                  <button
+                    onClick={() => onStatus(t.id, 'Collected', actionLabel)}
+                    disabled={busyId === t.id}
+                    className="text-purple-600 hover:underline disabled:opacity-50"
+                  >
+                    {actionLabel}
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LabSamplesTab({ queue, onStatus, busyId }) {
+  const tests = queue.filter(t => SAMPLES_STATUSES.includes(t.status));
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Sample Tracking</h2>
+        <p className="text-sm text-gray-500">Awaiting collection or receipt in the lab.</p>
+      </div>
+      <div className="p-6">
+        <LabQueueTable
+          tests={tests}
+          onStatus={onStatus}
+          busyId={busyId}
+          emptyText="No samples awaiting collection."
+          actionLabel="Mark Collected"
+        />
+      </div>
+    </div>
+  );
+}
+
+function LabInProgressTab({ queue, onStatus, busyId }) {
+  const tests = queue.filter(t => IN_PROGRESS_STATUSES.includes(t.status));
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">In-Progress Tests</h2>
+        <p className="text-sm text-gray-500">Collected samples currently being analysed.</p>
+      </div>
+      <div className="p-6">
+        <LabQueueTable
+          tests={tests}
+          onStatus={onStatus}
+          busyId={busyId}
+          emptyText="No tests in progress."
+          actionLabel="Mark Verified"
+        />
+      </div>
+    </div>
+  );
+}
+
+function LabResultsTab({ queue }) {
+  const tests = queue.filter(t => RESULTS_STATUSES.includes(t.status));
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Results Management</h2>
+        <p className="text-sm text-gray-500">Verified and released results awaiting review.</p>
+      </div>
+      <div className="p-6">
+        <LabQueueTable tests={tests} emptyText="No results verified yet." />
+      </div>
+    </div>
+  );
+}
+// Lab supplies reuse the pharmacy inventory tables — same physical stock.
+function LabInventoryTab() {
+  const { user } = useAuth();
+  const { data: inventory = [] } = useQuery({
+    queryKey: ['lab-inventory'],
+    queryFn: () => api.get('/pharmacy/inventory')
+      .then(r => r.data.inventory || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  const { data: medications = [] } = useQuery({
+    queryKey: ['pharmacy-medications'],
+    queryFn: () => api.get('/pharmacy/medications')
+      .then(r => r.data.medications || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  const { data: lowStock = [] } = useQuery({
+    queryKey: ['pharmacy-low-stock'],
+    queryFn: () => api.get('/pharmacy/low-stock')
+      .then(r => r.data.low_stock || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  const { data: expiring = [] } = useQuery({
+    queryKey: ['pharmacy-expiring'],
+    queryFn: () => api.get('/pharmacy/expiring')
+      .then(r => r.data.expiring_soon || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+
+  const nameOf = id => {
+    const m = medications.find(x => x.id === id);
+    return m ? `${m.name} ${m.strength || ''}`.trim() : `Medication #${id}`;
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Laboratory Inventory</h2>
+      </div>
+      <div className="p-6 space-y-6">
+        {(lowStock.length > 0 || expiring.length > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {lowStock.length > 0 && (
+              <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+                <p className="text-sm font-medium text-red-800">Low stock items: {lowStock.length}</p>
+              </div>
+            )}
+            {expiring.length > 0 && (
+              <div className="p-4 border border-yellow-200 rounded-lg bg-yellow-50">
+                <p className="text-sm font-medium text-yellow-800">Expiring soon: {expiring.length}</p>
+              </div>
+            )}
+          </div>
+        )}
+        {inventory.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No inventory records.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Item', 'Batch', 'Quantity', 'Expiry', 'Location'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {inventory.map(i => (
+                  <tr key={i.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{nameOf(i.medication_id)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{i.batch_number}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{i.quantity}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{i.expiry_date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{i.location || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LaboratoryDashboard() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [actionMsg, setActionMsg] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  const setTestStatus = async (id, status, label) => {
+    setBusyId(id); setActionMsg(null);
+    try {
+      await api.put(`/lab/${id}/status`, { status });
+      setActionMsg(`${label} succeeded.`);
+      queryClient.invalidateQueries();
+    } catch (e) {
+      setActionMsg(e.response?.data?.error || `${label} failed.`);
+    } finally { setBusyId(null); }
+  };
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useDashboardTab('queue');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const { data: labQueue } = useQuery({
+  const { data: labQueue = [] } = useQuery({
     queryKey: ['lab-queue'],
     queryFn: () => api.get('/lab/queue/pending').then(r => r.data.queue || []),
     refetchInterval: 30000,
   });
 
-  const { data: criticalResults } = useQuery({
+  const { data: criticalResults = [] } = useQuery({
     queryKey: ['critical-results'],
     queryFn: () => api.get('/lab/critical').then(r => r.data.results || []).catch(() => []),
     refetchInterval: 60000,
   });
 
-  const { data: notifications } = useQuery({
+  const { data: notifications = [] } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: () => api.get('/notifications', { params: { unread: true } }).then(r => r.data.notifications || []),
     enabled: !!user?.id,
@@ -45,11 +253,11 @@ export default function LaboratoryDashboard() {
   });
 
   const stats = {
-    pending: labQueue?.filter(t => ['Ordered', 'CollectionPending'].includes(t.status)).length || 0,
-    collected: labQueue?.filter(t => t.status === 'Collected').length || 0,
-    inProgress: labQueue?.filter(t => t.status === 'InProgress').length || 0,
-    verified: labQueue?.filter(t => t.status === 'Verified').length || 0,
-    critical: criticalResults?.length || 0,
+    pending: labQueue.filter(t => ['Ordered', 'CollectionPending'].includes(t.status)).length || 0,
+    collected: labQueue.filter(t => t.status === 'Collected').length || 0,
+    inProgress: labQueue.filter(t => t.status === 'InProgress').length || 0,
+    verified: labQueue.filter(t => t.status === 'Verified').length || 0,
+    critical: criticalResults.length || 0,
   };
 
   return (
@@ -63,14 +271,7 @@ export default function LaboratoryDashboard() {
           <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
             {user?.displayRole}
           </span>
-          <button className="relative p-2 text-gray-600 hover:text-gray-900">
-            <Bell className="w-6 h-6" />
-            {notifications?.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {notifications.length > 9 ? '9+' : notifications.length}
-              </span>
-            )}
-          </button>
+          <NotificationBell notifications={notifications} />
         </div>
       </div>
 
@@ -135,7 +336,7 @@ export default function LaboratoryDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total in Queue</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{labQueue?.length || 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{labQueue.length || 0}</p>
             </div>
             <div className="p-3 rounded-full bg-purple-100">
               <FlaskConical className="w-6 h-6 text-purple-600" />
@@ -194,7 +395,7 @@ export default function LaboratoryDashboard() {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
@@ -208,7 +409,7 @@ export default function LaboratoryDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {labQueue?.filter(test => {
+                  {labQueue.filter(test => {
                     const matchesSearch = !searchQuery || 
                       `${test.first_name} ${test.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       test.test_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -244,8 +445,8 @@ export default function LaboratoryDashboard() {
                       <td className="px-6 py-4 text-sm text-gray-700">Dr. {test.doctor_name}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button className="text-sm text-purple-600 hover:underline">View</button>
-                          <button className="text-sm text-green-600 hover:underline">Collect</button>
+                          <button onClick={() => setTestStatus(test.id, 'Verified', 'View')} className="text-sm text-purple-600 hover:underline">View</button>
+                          <button onClick={() => setTestStatus(test.id, 'Collected', 'Sample collection')} disabled={busyId === test.id} className="text-sm text-green-600 hover:underline disabled:opacity-50">Collect</button>
                         </div>
                       </td>
                     </tr>
@@ -258,32 +459,26 @@ export default function LaboratoryDashboard() {
       )}
 
       {activeTab === 'samples' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Sample tracking coming soon</p>
-        </div>
+        <LabSamplesTab queue={labQueue} onStatus={setTestStatus} busyId={busyId} />
       )}
 
       {activeTab === 'in-progress' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">In-progress tests view coming soon</p>
-        </div>
+        <LabInProgressTab queue={labQueue} onStatus={setTestStatus} busyId={busyId} />
       )}
 
       {activeTab === 'results' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Results management coming soon</p>
-        </div>
+        <LabResultsTab queue={labQueue} />
       )}
 
       {activeTab === 'critical' && (
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b flex items-center justify-between">
+          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
             <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" /> Critical Results Requiring Attention
             </h2>
           </div>
           <div className="p-6">
-            {criticalResults?.length === 0 ? (
+            {criticalResults.length === 0 ? (
               <div className="text-center py-8">
                 <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-2" />
                 <p className="text-gray-600">No critical results at this time</p>
@@ -299,7 +494,7 @@ export default function LaboratoryDashboard() {
                         <p className="text-sm text-red-600 mt-1">Value: {result.result_value} {result.unit} (Ref: {result.reference_range})</p>
                         <p className="text-xs text-red-500 mt-1">Flagged at: {format(new Date(result.flagged_at), 'MMM d, yyyy HH:mm')}</p>
                       </div>
-                      <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700">Acknowledge</button>
+                      <button onClick={() => setTestStatus(result.id, 'Verified', 'Acknowledge')} disabled={busyId === result.id} className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50">Acknowledge</button>
                     </div>
                   </div>
                 ))}
@@ -310,9 +505,7 @@ export default function LaboratoryDashboard() {
       )}
 
       {activeTab === 'inventory' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Laboratory inventory management coming soon</p>
-        </div>
+        <LabInventoryTab />
       )}
     </div>
   );

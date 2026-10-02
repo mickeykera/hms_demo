@@ -136,7 +136,7 @@ router.put('/:prescriptionId/status', authorize(['Pharmacy', 'Admin']), (req, re
 
 router.get('/prescriptions/:patientId', authorize(['Pharmacy', 'Admin', 'Doctor', 'Billing']), (req, res) => {
   const prescriptions = db.getDb().prepare(
-    'SELECT p.*, c.diagnosis, d.first_name as doctor_first, d.last_name as doctor_last FROM prescriptions p JOIN consultations c ON p.consultation_id = c.id JOIN users d ON p.prescribing_doctor_id = d.id WHERE p.patient_id = ? AND p.dispensed = 0 ORDER BY p.created_at DESC'
+    'SELECT p.*, c.diagnosis, d.full_name as doctor_first, d.full_name as doctor_last FROM prescriptions p JOIN consultations c ON p.consultation_id = c.id JOIN users d ON p.prescribing_doctor_id = d.id WHERE p.patient_id = ? AND p.dispensed = 0 ORDER BY p.created_at DESC'
   ).all(req.params.patientId);
   res.json({ prescriptions });
 });
@@ -199,9 +199,16 @@ router.get('/low-stock', authorize(['Pharmacy', 'Admin']), (req, res) => {
 
 router.get('/expiring', authorize(['Pharmacy', 'Admin']), (req, res) => {
   const days = parseInt(req.query.days) || 30;
+  // A SQLite date modifier takes one string argument (e.g. '+30 days').
+  // The previous query used `||` inside the modifier, which is invalid and
+  // made this endpoint return 500.
   const items = db.getDb().prepare(
-    'SELECT i.*, m.name as medication_name FROM pharmacy_inventory i JOIN medications m ON i.medication_id = m.id WHERE i.expiry_date <= DATE("now", ? || " days") ORDER BY i.expiry_date ASC'
-  ).all(`+${days}`);
+    `SELECT i.*, m.name as medication_name
+       FROM pharmacy_inventory i
+       JOIN medications m ON i.medication_id = m.id
+      WHERE i.expiry_date <= DATE('now', ?)
+      ORDER BY i.expiry_date ASC`
+  ).all(`+${days} days`);
   res.json({ expiring_soon: items });
 });
 

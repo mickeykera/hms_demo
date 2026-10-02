@@ -4,7 +4,7 @@ import { clinicalService, patientService } from '../services/api';
 import { 
   Plus, Search, Eye, Edit, FileText, Pill, 
   Stethoscope, AlertCircle, Loader2, HeartPulse,
-  Activity, Brain, Bone, HelpCircle, Heart
+  Activity, Brain, Bone, HelpCircle, Heart, User, Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -27,25 +27,25 @@ export default function Clinical() {
   const [historyData, setHistoryData] = useState({ condition: '', diagnosis_date: '', treatment: '', status: 'Active', notes: '' });
   const queryClient = useQueryClient();
 
-  const { data: patient } = useQuery({
+  const { data: patient = [] } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => clinicalService.getPatient(patientId).then(r => r.data.patient),
     enabled: !!patientId,
   });
 
-  const { data: emr } = useQuery({
+  const { data: emr = [] } = useQuery({
     queryKey: ['emr', patientId],
     queryFn: () => clinicalService.getEMR(patientId).then(r => r.data),
     enabled: !!patientId,
   });
 
-  const { data: prescriptions } = useQuery({
+  const { data: prescriptions = [] } = useQuery({
     queryKey: ['prescriptions', patientId],
     queryFn: () => clinicalService.getPrescriptions(patientId).then(r => r.data.prescriptions || []),
     enabled: !!patientId,
   });
 
-  const { data: searchResults } = useQuery({
+  const { data: searchResults = [] } = useQuery({
     queryKey: ['patientSearch', search],
     queryFn: () => patientService.search(search).then(r => r.data.patients || []),
     enabled: !!search,
@@ -94,7 +94,7 @@ export default function Clinical() {
             onChange={e => setSearch(e.target.value)}
             className="input mb-4"
           />
-          {search && searchResults?.map(p => (
+          {search && searchResults.map(p => (
             <button 
               key={p.id} 
               onClick={() => setPatientId(p.id)}
@@ -220,8 +220,8 @@ export default function Clinical() {
       )}
 
       {activeTab === 'consultations' && emr && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50"><tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Chief Complaint</th>
@@ -230,7 +230,7 @@ export default function Clinical() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Doctor</th>
             </tr></thead>
             <tbody className="divide-y divide-gray-200">
-              {emr.consultations?.map(c => (
+              {emr.consultations.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-900">{format(new Date(c.consultation_date), 'MMM dd, yyyy HH:mm')}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{c.chief_complaint}</td>
@@ -245,8 +245,8 @@ export default function Clinical() {
       )}
 
       {activeTab === 'prescriptions' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50"><tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Medication</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dosage</th>
@@ -256,7 +256,7 @@ export default function Clinical() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
             </tr></thead>
             <tbody className="divide-y divide-gray-200">
-              {prescriptions?.map(p => (
+              {prescriptions.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.medication_name}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{p.dosage}</td>
@@ -276,7 +276,7 @@ export default function Clinical() {
           <button onClick={() => { setShowHistoryModal(true); }} className="btn-primary">
             <Plus className="w-4 h-4 mr-2" /> Add History Entry
           </button>
-          {emr.medical_history?.map(h => (
+          {emr.medical_history.map(h => (
             <div key={h.id} className="bg-white rounded-lg shadow p-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -293,12 +293,12 @@ export default function Clinical() {
 
       {showConsultModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-4 max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">New Consultation</h2>
               <button onClick={() => setShowConsultModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); consultMutation.mutate({...consultData, patient_id: patientId, doctor_id: 1 }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); consultMutation.mutate({...consultData, patient_id: patientId, doctor_id: 1 }); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaint *</label>
@@ -330,12 +330,12 @@ export default function Clinical() {
 
       {showPrescriptionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-4 max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">New Prescription</h2>
               <button onClick={() => setShowPrescriptionModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); prescriptionMutation.mutate(prescriptionData); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); prescriptionMutation.mutate(prescriptionData); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Medication *</label>
@@ -371,12 +371,12 @@ export default function Clinical() {
 
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Add Medical History</h2>
               <button onClick={() => setShowHistoryModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); historyMutation.mutate(historyData); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); historyMutation.mutate(historyData); }} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Condition *</label>
                 <input required value={historyData.condition} onChange={e => setHistoryData({...historyData, condition: e.target.value})} className="input" />

@@ -73,6 +73,33 @@ router.get('/patient/:patientId', authorize(['LabTech', 'Doctor', 'Admin', 'Nurs
 /**
  * Get lab queue for current lab technician
  */
+/**
+ * Doctor-scoped pending lab worklist.
+ *
+ * Filters on `lab_tests.order_doctor_id`, which is the authoritative link to
+ * the ordering clinician. An earlier version joined through `appointments`,
+ * which silently returned nothing because a patient can have lab work ordered
+ * without ever having had an appointment with that specific doctor.
+ */
+router.get('/doctor/:doctorId/pending', authorize(['Doctor', 'Admin']), (req, res) => {
+  try {
+    const results = db.getDb().prepare(`
+      SELECT l.id AS test_id, l.test_name, l.status, l.ordered_at,
+             l.sample_id, l.test_type,
+             p.id AS patient_id, p.first_name, p.last_name, p.global_id
+        FROM lab_tests l
+        JOIN patients p ON p.id = l.patient_id
+       WHERE l.order_doctor_id = ?
+         AND l.status IN ('Ordered','CollectionPending','Collected','InProgress')
+       ORDER BY l.ordered_at DESC
+       LIMIT 50
+    `).all(req.params.doctorId);
+    res.json({ results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/queue/pending', authorize(['LabTech', 'Admin']), (req, res) => {
   try {
     const queue = db.getDb().prepare(

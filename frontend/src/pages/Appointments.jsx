@@ -37,17 +37,17 @@ export default function Appointments() {
   const [filters, setFilters] = useState({ doctor_id: '', status: '', date: '' });
   const queryClient = useQueryClient();
 
-  const { data: appointments } = useQuery({
+  const { data: appointments = [] } = useQuery({
     queryKey: ['appointments', filters],
     queryFn: () => appointmentsService.list(filters).then(r => r.data.appointments || []),
   });
 
-  const { data: patients } = useQuery({
+  const { data: patients = [] } = useQuery({
     queryKey: ['apptPatients'],
     queryFn: () => patientService.search('').then(r => r.data.patients || []),
   });
 
-  const { data: doctors } = useQuery({
+  const { data: doctors = [] } = useQuery({
     queryKey: ['apptDoctors'],
     queryFn: () => clinicalService.getDoctors ? clinicalService.getDoctors() : Promise.resolve({ data: [] }).then(r => r.data || []),
   });
@@ -91,7 +91,7 @@ export default function Appointments() {
     return days;
   };
 
-  const dayAppointments = (day) => appointments?.filter(a => isSameDay(new Date(a.scheduled_date), day)) || [];
+  const dayAppointments = (day) => appointments.filter(a => isSameDay(new Date(a.scheduled_date), day)) || [];
 
   return (
     <div className="space-y-6">
@@ -122,7 +122,7 @@ export default function Appointments() {
           <div className="flex gap-2 ml-auto">
             <select value={filters.doctor_id} onChange={e => setFilters({...filters, doctor_id: e.target.value})} className="input w-auto">
               <option value="">All Doctors</option>
-              {doctors?.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name}</option>)}
+              {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name}</option>)}
             </select>
             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})} className="input w-auto">
               <option value="">All Status</option>
@@ -154,7 +154,7 @@ export default function Appointments() {
       )}
 
       {view === 'month' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
           <div className="grid grid-cols-7 border-b bg-gray-50">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
               <div key={d} className="p-3 text-center text-sm font-medium text-gray-500">{d}</div>
@@ -183,8 +183,8 @@ export default function Appointments() {
       )}
 
       {view === 'list' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date/Time</th>
@@ -197,7 +197,7 @@ export default function Appointments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {appointments?.map(appt => (
+              {appointments.map(appt => (
                 <tr key={appt.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900">{format(new Date(appt.scheduled_date), 'MMM dd, yyyy HH:mm')}</p>
@@ -239,25 +239,25 @@ export default function Appointments() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">{editingAppointment ? 'Edit Appointment' : 'New Appointment'}</h2>
               <button onClick={() => { setShowModal(false); setEditingAppointment(null); resetForm(); }} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); if (editingAppointment) updateMutation.mutate({ id: editingAppointment.id, data: {...appointmentData, scheduled_date: new Date(appointmentData.scheduled_date).toISOString().slice(0,19).replace('T',' ') }}); else createMutation.mutate({...appointmentData, scheduled_date: new Date(appointmentData.scheduled_date).toISOString().slice(0,19).replace('T',' ') }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); if (editingAppointment) updateMutation.mutate({ id: editingAppointment.id, data: {...appointmentData, scheduled_date: new Date(appointmentData.scheduled_date).toISOString().slice(0,19).replace('T',' ') }}); else createMutation.mutate({...appointmentData, scheduled_date: new Date(appointmentData.scheduled_date).toISOString().slice(0,19).replace('T',' ') }); }} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
                   <select required value={appointmentData.patient_id} onChange={e => setAppointmentData({...appointmentData, patient_id: e.target.value})} className="input">
                     <option value="">Select Patient</option>
-                    {patients?.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.global_id})</option>)}
+                    {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.global_id})</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Doctor *</label>
                   <select required value={appointmentData.doctor_id} onChange={e => setAppointmentData({...appointmentData, doctor_id: e.target.value})} className="input">
                     <option value="">Select Doctor</option>
-                    {doctors?.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name} ({d.department})</option>)}
+                    {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.last_name} ({d.department})</option>)}
                   </select>
                 </div>
                 <div>

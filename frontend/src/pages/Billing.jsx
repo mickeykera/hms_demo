@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { billingService, patientService } from '../services/api';
 import { 
   Plus, Search, Eye, Edit, DollarSign, CreditCard, 
-  FileText, AlertCircle, Loader2, CheckCircle, XCircle
+  FileText, AlertCircle, Loader2, CheckCircle, XCircle, Download
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
   Unpaid: 'bg-red-100 text-red-800',
@@ -15,6 +16,7 @@ const statusColors = {
 };
 
 export default function Billing() {
+  const navigate = useNavigate();
   const [patientId, setPatientId] = useState('');
   const [search, setSearch] = useState('');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -24,19 +26,19 @@ export default function Billing() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: patient } = useQuery({
+  const { data: patient = [] } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => patientService.get(patientId).then(r => r.data.patient),
     enabled: !!patientId,
   });
 
-  const { data: billingData } = useQuery({
+  const { data: billingData = [] } = useQuery({
     queryKey: ['billing', patientId],
     queryFn: () => billingService.getInvoices(patientId).then(r => r.data),
     enabled: !!patientId,
   });
 
-  const { data: searchResults } = useQuery({
+  const { data: searchResults = [] } = useQuery({
     queryKey: ['patientSearch', search],
     queryFn: () => patientService.search(search).then(r => r.data.patients || []),
     enabled: !!search,
@@ -76,7 +78,7 @@ export default function Billing() {
             onChange={e => setSearch(e.target.value)}
             className="input mb-4"
           />
-          {search && searchResults?.map(p => (
+          {search && searchResults.map(p => (
             <button 
               key={p.id} 
               onClick={() => setPatientId(p.id)}
@@ -111,7 +113,7 @@ export default function Billing() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-600">Total Invoices</p>
-          <p className="text-3xl font-bold text-gray-900">{billingData?.invoices?.length || 0}</p>
+          <p className="text-3xl font-bold text-gray-900">{billingData?.invoices.length || 0}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-600">Unpaid Amount</p>
@@ -119,16 +121,16 @@ export default function Billing() {
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-600">Paid Invoices</p>
-          <p className="text-3xl font-bold text-green-600">{billingData?.invoices?.filter(i => i.status === 'Paid').length || 0}</p>
+          <p className="text-3xl font-bold text-green-600">{billingData?.invoices.filter(i => i.status === 'Paid').length || 0}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-600">Pending Invoices</p>
-          <p className="text-3xl font-bold text-yellow-600">{billingData?.invoices?.filter(i => i.status === 'Partial').length || 0}</p>
+          <p className="text-3xl font-bold text-yellow-600">{billingData?.invoices.filter(i => i.status === 'Partial').length || 0}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
@@ -142,7 +144,7 @@ export default function Billing() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {billingData?.invoices?.map(inv => (
+            {billingData?.invoices.map(inv => (
               <tr key={inv.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{inv.invoice_number}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{format(new Date(inv.created_at), 'MMM dd, yyyy')}</td>
@@ -169,7 +171,7 @@ export default function Billing() {
                         <CreditCard className="w-4 h-4 inline mr-1" /> Pay
                       </button>
                     )}
-                    <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                    <button onClick={() => navigate('/billing/invoices')} className="text-blue-600 hover:text-blue-900 text-sm font-medium">
                       <Eye className="w-4 h-4 inline mr-1" /> View
                     </button>
                   </div>
@@ -185,12 +187,12 @@ export default function Billing() {
 
       {showInvoiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Create Invoice</h2>
               <button onClick={() => setShowInvoiceModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); invoiceMutation.mutate({...invoiceData, total_amount: parseFloat(invoiceData.total_amount) }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); invoiceMutation.mutate({...invoiceData, total_amount: parseFloat(invoiceData.total_amount) }); }} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount *</label>
                 <input type="number" step="0.01" required value={invoiceData.total_amount} onChange={e => setInvoiceData({...invoiceData, total_amount: e.target.value})} className="input" />
@@ -216,12 +218,12 @@ export default function Billing() {
 
       {showPaymentModal && selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Process Payment</h2>
               <button onClick={() => setShowPaymentModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm text-gray-600">Invoice: {selectedInvoice.invoice_number}</p>
                 <p className="text-sm text-gray-600">Total: ${parseFloat(selectedInvoice.total_amount).toFixed(2)}</p>

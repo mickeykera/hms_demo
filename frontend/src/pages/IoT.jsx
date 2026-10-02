@@ -7,6 +7,7 @@ import {
   Download, TrendingUp, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getColor } from '../utils/colorMap';
 
 export default function IoT() {
   const [patientId, setPatientId] = useState('');
@@ -14,7 +15,7 @@ export default function IoT() {
   const [timeRange, setTimeRange] = useState('1h');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const { data: patient } = useQuery({
+  const { data: patient = [] } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => patientService.get(patientId).then(r => r.data.patient),
     enabled: !!patientId,
@@ -27,7 +28,7 @@ export default function IoT() {
     refetchInterval: autoRefresh ? 5000 : false,
   });
 
-  const { data: searchResults } = useQuery({
+  const { data: searchResults = [] } = useQuery({
     queryKey: ['patientSearch', search],
     queryFn: () => patientService.search(search).then(r => r.data.patients || []),
     enabled: !!search,
@@ -68,7 +69,7 @@ export default function IoT() {
             onChange={e => setSearch(e.target.value)}
             className="input mb-4"
           />
-          {search && searchResults?.map(p => (
+          {search && searchResults.map(p => (
             <button 
               key={p.id} 
               onClick={() => setPatientId(p.id)}
@@ -127,8 +128,8 @@ export default function IoT() {
             <div key={device.type} className="bg-white rounded-lg shadow p-5 border-l-4" style={{ borderColor: device.color }}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-full bg-${device.color}-100`}>
-                    <device.icon className={`w-5 h-5 text-${device.color}-600`} />
+                  <div className={`p-2 rounded-full ${getColor(device.color).icon}`}>
+                    <device.icon className={`w-5 h-5 ${getColor(device.color).text}`} />
                   </div>
                   <span className="text-sm font-medium text-gray-600">{device.label}</span>
                 </div>
@@ -145,11 +146,11 @@ export default function IoT() {
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Telemetry History</h2>
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            {telemetry?.length || 0} readings
+            {telemetry.length || 0} readings
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
@@ -159,7 +160,7 @@ export default function IoT() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {telemetry?.slice(0, 50).map(reading => (
+              {telemetry.slice(0, 50).map(reading => (
                 <tr key={reading.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-500 font-mono">{format(new Date(reading.timestamp), 'MMM dd, HH:mm:ss')}</td>
                   <td className="px-6 py-4">
@@ -187,8 +188,8 @@ export default function IoT() {
               <div key={device.type} className="p-4 border rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-full bg-${device.color}-100`}>
-                      <device.icon className={`w-5 h-5 text-${device.color}-600`} />
+                    <div className={`p-2 rounded-full ${getColor(device.color).icon}`}>
+                      <device.icon className={`w-5 h-5 ${getColor(device.color).text}`} />
                     </div>
                     <span className="font-medium">{device.label}</span>
                   </div>

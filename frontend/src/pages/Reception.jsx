@@ -7,6 +7,7 @@ import {
   Download, Filter
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
   Waiting: 'bg-yellow-100 text-yellow-800',
@@ -16,6 +17,7 @@ const statusColors = {
 };
 
 export default function Reception() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState(null);
@@ -27,13 +29,13 @@ export default function Reception() {
   });
   const queryClient = useQueryClient();
 
-  const { data: patients } = useQuery({
+  const { data: patients = [] } = useQuery({
     queryKey: ['patients', search],
     queryFn: () => patientService.search(search).then(r => r.data.patients || []),
     enabled: !!search || search === '',
   });
 
-  const { data: queue } = useQuery({
+  const { data: queue = [] } = useQuery({
     queryKey: ['queue', 'General'],
     queryFn: () => patientService.queue('General').then(r => r.data.waiting_patients || []),
     refetchInterval: 30000,
@@ -79,15 +81,15 @@ export default function Reception() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h2 className="text-lg font-semibold">Waiting Queue - General</h2>
               <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                {queue?.length || 0} waiting
+                {queue.length || 0} waiting
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
@@ -98,7 +100,7 @@ export default function Reception() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {queue?.map((visit, i) => (
+                  {queue.map((visit, i) => (
                     <tr key={visit.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{visit.queue_position}</td>
                       <td className="px-6 py-4">
@@ -114,7 +116,7 @@ export default function Reception() {
                         {format(new Date(visit.check_in_time), 'HH:mm:ss')}
                       </td>
                       <td className="px-6 py-4">
-                        <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">View</button>
+                        <button onClick={() => navigate('/reception/patients')} className="text-blue-600 hover:text-blue-900 text-sm font-medium">View</button>
                       </td>
                     </tr>
                   ))}
@@ -175,14 +177,14 @@ export default function Reception() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-4 max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">{editingPatient ? 'Edit Patient' : 'Register New Patient'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
                 <Download size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
@@ -223,14 +225,14 @@ export default function Reception() {
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <input type="text" placeholder="Name" value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} className="input" />
                     <input type="tel" placeholder="Phone" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} className="input" />
                   </div>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Insurance</label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <input type="text" placeholder="Provider" value={formData.insurance_provider} onChange={e => setFormData({...formData, insurance_provider: e.target.value})} className="input" />
                     <input type="text" placeholder="Policy ID" value={formData.insurance_id} onChange={e => setFormData({...formData, insurance_id: e.target.value})} className="input" />
                     <input type="date" value={formData.insurance_validity} onChange={e => setFormData({...formData, insurance_validity: e.target.value})} className="input" />

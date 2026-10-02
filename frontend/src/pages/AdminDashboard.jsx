@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDashboardTab } from '../hooks/useDashboardTab';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -10,6 +10,10 @@ import {
   Key, Lock, Unlock, LogOut, UserPlus, UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { getColor } from '../utils/colorMap';
+import NotificationBell from '../components/NotificationBell';
+import { useToast } from '../components/Toast';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -27,32 +31,448 @@ function LayoutDashboard({ className }) {
   return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
 }
 
+// ---------- Admin tabs ----------
+// Personnel/roles/departments/patients/settings each read an endpoint that
+// already existed; only "System settings" needed a new route.
+function AdminPersonnelTab() {
+  const { user } = useAuth();
+  const [search, setSearch] = useState('');
+  const { data: personnel = [] } = useQuery({
+    queryKey: ['admin-personnel'],
+    queryFn: () => api.get('/personnel').then(r => r.data.personnel || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  const rows = personnel.filter(p =>
+    !search || `${p.first_name} ${p.last_name} ${p.employee_id} ${p.professional_title || ''}`
+      .toLowerCase().includes(search.toLowerCase())
+  );
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg font-semibold">Personnel Management</h2>
+        <input
+          type="text" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search personnel..." aria-label="Search personnel"
+          className="w-full sm:w-64 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+      <div className="p-6">
+        {rows.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No personnel records.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Name', 'Employee ID', 'Title', 'Status', 'Hired'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {rows.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {[p.first_name, p.last_name].filter(Boolean).join(' ') || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{p.employee_id || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{p.professional_title || '—'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        p.employment_status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {p.employment_status || 'Unknown'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {p.hire_date ? format(new Date(p.hire_date), 'MMM dd, yyyy') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminRolesTab() {
+  const { user } = useAuth();
+  const [roleName, setRoleName] = useState('');
+  const { data: roles = [] } = useQuery({
+    queryKey: ['rbac-roles'],
+    queryFn: () => api.get('/rbac/roles').then(r => r.data.roles || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  const { data: permissions = [] } = useQuery({
+    queryKey: ['rbac-permissions'],
+    queryFn: () => api.get('/rbac/permissions').then(r => r.data.permissions || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  const [selected, setSelected] = useState('');
+  const active = roles.find(r => String(r.id) === String(selected));
+  const granted = new Set(
+    (permissions.filter(p => p.role_id === Number(selected))).map(p => p.permission_id)
+  );
+  const fld = 'px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Roles &amp; Permissions</h2>
+      </div>
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="rb-role" className="block text-sm font-medium text-gray-700 mb-1">Select role</label>
+            <input id="rb-role" value={roleName} onChange={e => setRoleName(e.target.value)}
+              placeholder="Filter roles..." className={fld} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Roles ({roles.length})</h3>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {roles.filter(r => !roleName || r.name?.toLowerCase().includes(roleName.toLowerCase())).map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setSelected(String(r.id))}
+                  className={`w-full text-left p-3 border rounded-lg text-sm ${
+                    String(r.id) === selected ? 'border-indigo-500 bg-indigo-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="font-medium text-gray-900">{r.name}</span>
+                  {r.description && <span className="block text-xs text-gray-500">{r.description}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">
+              Permissions {active ? `for ${active.name}` : '(select a role)'}
+            </h3>
+            <div className="space-y-1 max-h-96 overflow-y-auto">
+              {permissions.length === 0 && <p className="text-sm text-gray-500">No permissions defined.</p>}
+              {permissions.map(p => (
+                <div key={p.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                  <span className="text-gray-700">{p.name || p.code}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    selected ? (granted.has(p.id) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {selected ? (granted.has(p.id) ? 'Granted' : 'Not granted') : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminDepartmentsTab() {
+  const { user } = useAuth();
+  const { data: departments = [] } = useQuery({
+    queryKey: ['admin-departments'],
+    queryFn: () => api.get('/departments').then(r => r.data.departments || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Department Management</h2>
+      </div>
+      <div className="p-6">
+        {departments.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No departments configured.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Department', 'Code', 'Manager', 'Status'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {departments.map(d => (
+                  <tr key={d.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{d.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{d.code || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{d.manager_name || '—'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        d.active === false ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {d.active === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminPatientsTab() {
+  const { user } = useAuth();
+  const [q, setQ] = useState('');
+  const { data: results = [] } = useQuery({
+    queryKey: ['admin-patients', q],
+    queryFn: () => api.get('/reception/search', { params: { q } })
+      .then(r => r.data.patients || r.data.results || []).catch(() => []),
+    enabled: !!user?.id && q.length >= 2,
+  });
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg font-semibold">Patient Administration</h2>
+        <input
+          type="text" value={q} onChange={e => setQ(e.target.value)}
+          placeholder="Search by name, ID or phone..." aria-label="Search patients"
+          className="w-full sm:w-72 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+      <div className="p-6">
+        {q.length < 2 ? (
+          <p className="text-gray-500 text-center py-8">Type at least 2 characters to search.</p>
+        ) : results.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No patients matched.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Patient', 'Global ID', 'Gender', 'Blood', 'Phone'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {results.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {p.first_name} {p.last_name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{p.global_id || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{p.gender || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{p.blood_type || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{p.phone || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminReportsTab() {
+  const { user } = useAuth();
+  // Fetched here rather than reused from the page component: tabs are separate
+  // functions and cannot close over the parent's query result.
+  const { data: systemStats = {} } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: () => api.get('/admin/stats').then(r => r.data).catch(() => ({})),
+    enabled: !!user?.id,
+  });
+  const { data: stats } = useQuery({
+    queryKey: ['admin-audit-stats'],
+    queryFn: () => api.get('/audit/stats').then(r => r.data).catch(() => ({})),
+    enabled: !!user?.id,
+  });
+  const tiles = [
+    { label: 'Total Patients', value: systemStats?.total_patients },
+    { label: 'Total Users', value: systemStats?.total_users },
+    { label: 'Active Personnel', value: systemStats?.active_personnel },
+    { label: 'Departments', value: systemStats?.total_departments },
+    { label: 'Total Visits', value: systemStats?.total_visits },
+    { label: 'Revenue (billed)', value: stats?.total_revenue },
+  ];
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">Reports &amp; Analytics</h2>
+      </div>
+      <div className="p-6 space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {tiles.map(t => (
+            <div key={t.label} className="p-4 border rounded-lg">
+              <p className="text-xs text-gray-500 uppercase">{t.label}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {t.value === undefined || t.value === null ? '—' : Number(t.value).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+        {stats?.by_action && stats.by_action.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Audit activity by action</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px]">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {['Action', 'Count'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {stats.by_action.map(a => (
+                    <tr key={a.action}>
+                      <td className="px-4 py-3 text-sm text-gray-900">{a.action}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{a.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminSettingsTab() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [drafts, setDrafts] = useState({});
+
+  const { data: settings = [] } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => api.get('/admin/settings').then(r => r.data.settings || []).catch(() => []),
+    enabled: !!user?.id,
+  });
+
+  const save = useMutation({
+    mutationFn: ({ key, value }) => api.put(`/admin/settings/${key}`, {
+      value, category: settings.find(s => s.key === key)?.category,
+    }),
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      setDrafts(d => ({ ...d, [vars.key]: '' }));
+      toast(`Saved ${vars.key}`);
+    },
+    onError: err => toast(err?.response?.data?.error || 'Failed to save setting', 'error'),
+  });
+
+  const canWrite = user?.role === 'SuperAdmin';
+  const fld = 'px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500';
+
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-4 sm:p-6 border-b">
+        <h2 className="text-lg font-semibold">System Settings</h2>
+        {!canWrite && (
+          <p className="text-xs text-gray-500 mt-1">Read-only — only SuperAdmin can change these values.</p>
+        )}
+      </div>
+      <div className="p-6">
+        {settings.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No settings defined.</p>
+        ) : (
+          <div className="space-y-3">
+            {settings.map(s => {
+              const draft = drafts[s.key];
+              const value = draft !== undefined ? draft : (s.value ?? '');
+              return (
+                <div key={s.key} className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <div className="sm:w-48">
+                    <label htmlFor={`set-${s.key}`} className="block text-sm font-medium text-gray-700">
+                      {s.key.replace(/_/g, ' ')}
+                    </label>
+                    <span className="text-xs text-gray-500">{s.category}</span>
+                  </div>
+                  <input
+                    id={`set-${s.key}`} value={value} disabled={!canWrite} className={fld}
+                    onChange={e => setDrafts(d => ({ ...d, [s.key]: e.target.value }))}
+                  />
+                  {canWrite && (
+                    <button
+                      onClick={() => save.mutate({ key: s.key, value })}
+                      disabled={save.isPending || draft === undefined || draft === s.value}
+                      className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {save.isPending ? 'Saving…' : 'Save'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useDashboardTab('overview', { department: 'overview', new: 'users' });
 
-  const { data: systemStats } = useQuery({
+  // <NotificationBell> below reads this; without it the page threw
+  // "notifications is not defined" and the error boundary took over.
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: () => api.get('/notifications', { params: { unread: true } })
+      .then(r => r.data.notifications || []).catch(() => []),
+  });
+
+  // Served by /api/admin/stats (src/modules/admin/routes.js).
+  const { data: systemStats = {} } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => api.get('/admin/stats').then(r => r.data).catch(() => ({})),
   });
 
-  const { data: recentUsers } = useQuery({
+  const { data: recentUsers = [] } = useQuery({
     queryKey: ['recent-users'],
     queryFn: () => api.get('/personnel', { params: { limit: 10 } }).then(r => r.data.personnel || []).catch(() => []),
   });
 
-  const { data: auditLogs } = useQuery({
+  const queryClient = useQueryClient();
+  const [busyId, setBusyId] = useState(null);
+  const [actionMsg, setActionMsg] = useState(null);
+  const [selectedPersonnel, setSelectedPersonnel] = useState(null);
+
+  const togglePersonnel = async (id, status) => {
+    setBusyId(id);
+    setActionMsg(null);
+    try {
+      await api.put(`/personnel/${id}`, { employment_status: status });
+      setActionMsg(`Personnel #${id} set to ${status}.`);
+      queryClient.invalidateQueries();
+    } catch (e) {
+      setActionMsg(e.response?.data?.error || 'Could not update the record.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Audit logs are served by /api/audit, not /api/audit-logs.
+  const { data: auditLogs = [] } = useQuery({
     queryKey: ['audit-logs'],
-    queryFn: () => api.get('/audit-logs', { params: { limit: 20 } }).then(r => r.data.logs || []).catch(() => []),
+    queryFn: () => api.get('/audit', { params: { limit: 20 } }).then(r => r.data.logs || []).catch(() => []),
   });
 
   const stats = {
-    totalUsers: systemStats?.total_users || 0,
-    activeUsers: systemStats?.active_users || 0,
-    totalPatients: systemStats?.total_patients || 0,
-    todayAppointments: systemStats?.today_appointments || 0,
-    occupancyRate: systemStats?.occupancy_rate || 0,
-    revenue: systemStats?.revenue_today || 0,
+    totalUsers: systemStats?.total_users ?? 0,
+    activeUsers: systemStats?.active_users ?? 0,
+    totalPatients: systemStats?.total_patients ?? 0,
+    todayAppointments: systemStats?.today_appointments ?? 0,
+    occupancyRate: systemStats?.occupancy_rate ?? 0,
+    revenue: systemStats?.revenue_today ?? 0,
   };
 
   return (
@@ -66,9 +486,7 @@ export default function AdminDashboard() {
           <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
             {user?.displayRole}
           </span>
-          <button className="relative p-2 text-gray-600 hover:text-gray-900">
-            <Bell className="w-6 h-6" />
-          </button>
+          <NotificationBell notifications={notifications} />
         </div>
       </div>
 
@@ -162,12 +580,12 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Activity */}
           <div className="lg:col-span-2 bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {auditLogs?.map((log, i) => (
+                {auditLogs.map((log, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="p-2 rounded-full bg-indigo-100">
                       <Shield className="w-5 h-5 text-indigo-600" />
@@ -192,19 +610,19 @@ export default function AdminDashboard() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
               <div className="space-y-3">
                 {[
-                  { label: 'Create User', icon: UserPlus, color: 'blue', href: '/admin/users/new' },
-                  { label: 'Manage Roles', icon: Shield, color: 'purple', href: '/admin/roles' },
-                  { label: 'Manage Departments', icon: Building2, color: 'green', href: '/admin/departments' },
-                  { label: 'View Audit Logs', icon: FileText, color: 'orange', href: '/admin/audit' },
-                  { label: 'System Settings', icon: Settings, color: 'gray', href: '/admin/settings' },
-                  { label: 'Generate Report', icon: BarChart2, color: 'teal', href: '/admin/reports' },
+                  { label: 'Create User', icon: UserPlus, color: 'blue', to: '/admin/users/new' },
+                  { label: 'Manage Roles', icon: Shield, color: 'purple', to: '/admin/roles' },
+                  { label: 'Manage Departments', icon: Building2, color: 'green', to: '/admin/departments' },
+                  { label: 'View Audit Logs', icon: FileText, color: 'orange', to: '/admin/audit' },
+                  { label: 'System Settings', icon: Settings, color: 'gray', to: '/admin/settings' },
+                  { label: 'Generate Report', icon: BarChart2, color: 'teal', to: '/admin/reports' },
                 ].map((action, i) => (
-                  <a key={i} href={action.href} className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition">
-                    <div className={`p-2 rounded-lg bg-${action.color}-100`}>
-                      <action.icon className={`w-5 h-5 text-${action.color}-600`} />
+                  <Link key={i} to={action.to} className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition">
+                    <div className={`p-2 rounded-lg ${getColor(action.color).icon}`}>
+                      <action.icon className={`w-5 h-5 ${getColor(action.color).text}`} />
                     </div>
                     <span className="font-medium text-gray-900">{action.label}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -237,7 +655,7 @@ export default function AdminDashboard() {
 
       {activeTab === 'users' && (
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b flex items-center justify-between">
+          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
             <h2 className="text-lg font-semibold">User Management</h2>
             <div className="flex gap-3">
               <input
@@ -245,14 +663,14 @@ export default function AdminDashboard() {
                 placeholder="Search users..."
                 className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
-              <a href="/admin/users/new" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+              <Link to="/admin/users/new" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                 <UserPlus className="w-4 h-4" /> Add User
-              </a>
+              </Link>
             </div>
           </div>
           <div className="p-6">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
@@ -265,7 +683,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {recentUsers?.map(personnel => (
+                  {recentUsers.map(personnel => (
                     <tr key={personnel.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{personnel.user_id}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">{personnel.first_name} {personnel.last_name}</td>
@@ -279,8 +697,10 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-sm text-gray-500">Recent</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button className="text-sm text-indigo-600 hover:underline">Edit</button>
-                          <button className="text-sm text-gray-600 hover:underline">Disable</button>
+                          <button onClick={() => { setSelectedPersonnel(personnel); setActiveTab('users'); }} className="text-sm text-indigo-600 hover:underline">Edit</button>
+                          <button onClick={() => togglePersonnel(personnel.id, 'Active')} disabled={busyId === personnel.id} className="text-sm text-gray-600 hover:underline disabled:opacity-50">
+                            {personnel.employment_status === 'Active' ? 'Disable' : 'Enable'}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -292,33 +712,17 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'personnel' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Personnel management coming soon</p>
-        </div>
-      )}
+      {activeTab === 'personnel' && <AdminPersonnelTab />}
 
-      {activeTab === 'roles' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Roles & permissions management coming soon</p>
-        </div>
-      )}
+      {activeTab === 'roles' && <AdminRolesTab />}
 
-      {activeTab === 'departments' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Department management coming soon</p>
-        </div>
-      )}
+      {activeTab === 'departments' && <AdminDepartmentsTab />}
 
-      {activeTab === 'patients' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Patient administration coming soon</p>
-        </div>
-      )}
+      {activeTab === 'patients' && <AdminPatientsTab />}
 
       {activeTab === 'audit' && (
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b flex items-center justify-between">
+          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
             <h2 className="text-lg font-semibold">Audit Logs</h2>
             <input
               type="text"
@@ -328,7 +732,7 @@ export default function AdminDashboard() {
           </div>
           <div className="p-6">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
@@ -340,7 +744,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {auditLogs?.map((log, i) => (
+                  {auditLogs.map((log, i) => (
                     <tr key={i} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm text-gray-500">{format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">User {log.actor_id}</td>
@@ -357,17 +761,9 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'reports' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">Reports & analytics coming soon</p>
-        </div>
-      )}
+      {activeTab === 'reports' && <AdminReportsTab />}
 
-      {activeTab === 'settings' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-500 text-center py-8">System settings coming soon</p>
-        </div>
-      )}
+      {activeTab === 'settings' && <AdminSettingsTab />}
     </div>
   );
 }

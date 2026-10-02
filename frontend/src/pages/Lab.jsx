@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
   Ordered: 'bg-gray-100 text-gray-800',
@@ -17,6 +18,7 @@ const statusColors = {
 };
 
 export default function Lab() {
+  const navigate = useNavigate();
   const [patientId, setPatientId] = useState('');
   const [search, setSearch] = useState('');
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -27,19 +29,19 @@ export default function Lab() {
   const [activeTab, setActiveTab] = useState('tests');
   const queryClient = useQueryClient();
 
-  const { data: patient } = useQuery({
+  const { data: patient = [] } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => patientService.get(patientId).then(r => r.data.patient),
     enabled: !!patientId,
   });
 
-  const { data: labData } = useQuery({
+  const { data: labData = [] } = useQuery({
     queryKey: ['lab', patientId],
     queryFn: () => labService.getTests(patientId).then(r => r.data.tests || []),
     enabled: !!patientId,
   });
 
-  const { data: searchResults } = useQuery({
+  const { data: searchResults = [] } = useQuery({
     queryKey: ['patientSearch', search],
     queryFn: () => patientService.search(search).then(r => r.data.patients || []),
     enabled: !!search,
@@ -79,7 +81,7 @@ export default function Lab() {
             onChange={e => setSearch(e.target.value)}
             className="input mb-4"
           />
-          {search && searchResults?.map(p => (
+          {search && searchResults.map(p => (
             <button 
               key={p.id} 
               onClick={() => setPatientId(p.id)}
@@ -126,8 +128,8 @@ export default function Lab() {
       </div>
 
       {activeTab === 'tests' && labData && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Test</th>
@@ -152,7 +154,7 @@ export default function Lab() {
                         {test.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{results?.length || 0} result(s)</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">{results.length || 0} result(s)</td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         {test.status !== 'Completed' && (
@@ -163,7 +165,7 @@ export default function Lab() {
                             <CheckCircle className="w-4 h-4 inline mr-1" /> Enter Result
                           </button>
                         )}
-                        {results?.length > 0 && (
+                        {results.length > 0 && (
                           <button 
                             onClick={() => setSelectedTest({ test, results })}
                             className="text-blue-600 hover:text-blue-900 text-sm font-medium"
@@ -217,11 +219,11 @@ export default function Lab() {
                   <p className="font-medium text-lg">{test.test_name}</p>
                   <p className="text-sm text-gray-500">Completed: {test.completed_at ? format(new Date(test.completed_at), 'MMM dd, yyyy HH:mm') : 'N/A'}</p>
                 </div>
-                <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                <button onClick={() => navigate('/laboratory/results')} className="text-blue-600 hover:text-blue-900 text-sm font-medium">
                   <Eye className="w-4 h-4 inline mr-1" /> View Results
                 </button>
               </div>
-              {results?.map(r => (
+              {results.map(r => (
                 <div key={r.id} className="mt-3 p-3 bg-gray-50 rounded-lg">
                   <p className="font-medium">{r.result_data}</p>
                   <p className="text-sm text-gray-500">Ref: {r.reference_range || 'N/A'} {r.flagged && <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">FLAGGED</span>}</p>
@@ -237,12 +239,12 @@ export default function Lab() {
 
       {showOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Order Lab Test</h2>
               <button onClick={() => setShowOrderModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); orderMutation.mutate({...orderData, patient_id: patientId }); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); orderMutation.mutate({...orderData, patient_id: patientId }); }} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Test Name *</label>
                 <input required value={orderData.test_name} onChange={e => setOrderData({...orderData, test_name: e.target.value})} className="input" />
@@ -268,12 +270,12 @@ export default function Lab() {
 
       {showResultModal && selectedTest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-semibold">Enter Result - {selectedTest.test.test_name}</h2>
               <button onClick={() => setShowResultModal(false)} className="text-gray-500 hover:text-gray-700"><Download size={24} /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); resultMutation.mutate(); }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); resultMutation.mutate(); }} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Result Data *</label>
                 <textarea required value={resultData.result_data} onChange={e => setResultData({...resultData, result_data: e.target.value})} rows={3} className="input" />

@@ -11,6 +11,51 @@ let db = null;
 
 export function setTestDatabase(testDb) {
   db = testDb;
+  applyColumnBackfills(db);
+}
+
+// Open the database as soon as this module loads.
+//
+// Every exported helper below references the `db` binding directly rather
+// than going through getOrCreateDb(). Those helpers therefore assumed `db`
+// was already populated, which only held by accident of request ordering:
+// whichever call hit getDb() first (e.g. the /api/health probe) populated it,
+// and any other entry point — POST /api/auth/login on a freshly started
+// server — dereferenced null and threw "Cannot read properties of null".
+// Eager init makes the binding valid regardless of call order.
+getOrCreateDb();
+
+/**
+ * Backfill columns that schema.sql declares but cannot add to a table that
+ * already exists (CREATE TABLE IF NOT EXISTS never alters one).
+ *
+ * Both the real database and the integration-test database need this: the
+ * migration runner is not invoked by the test harness, and neither is
+ * setTestDatabase.
+ */
+function applyColumnBackfills(target) {
+  const consultationColumns = target
+    .prepare('PRAGMA table_info(consultations)')
+    .all()
+    .map(c => c.name);
+
+  const soapColumns = [
+    ['subjective', 'TEXT'],
+    ['objective', 'TEXT'],
+    ['assessment', 'TEXT'],
+    ['plan', 'TEXT'],
+    ['status', "TEXT NOT NULL DEFAULT 'Draft'"],
+    ['signed_at', 'DATETIME'],
+    ['updated_at', 'DATETIME'],
+  ];
+  for (const [name, definition] of soapColumns) {
+    if (!consultationColumns.includes(name)) {
+      target.exec(`ALTER TABLE consultations ADD COLUMN ${name} ${definition}`);
+    }
+  }
+  target.exec(
+    'CREATE INDEX IF NOT EXISTS idx_consultations_doctor_status ON consultations(doctor_id, status)'
+  );
 }
 
 function getOrCreateDb() {
@@ -45,6 +90,9 @@ function getOrCreateDb() {
     db.exec('ALTER TABLE users ADD COLUMN personnel_id INTEGER');
     db.exec('CREATE INDEX IF NOT EXISTS idx_users_personnel ON users(personnel_id)');
   }
+
+  // SOAP charting columns for databases predating the consultation migration.
+  applyColumnBackfills(db);
   
   return db;
 }
@@ -54,11 +102,11 @@ export function getDb() {
 }
 
 export function getUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  return getOrCreateDb().prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
 export function getUserByUsername(username) {
-  return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  return getOrCreateDb().prepare('SELECT * FROM users WHERE username = ?').get(username);
 }
 
 export function createUser(user) {
@@ -133,11 +181,54 @@ export function getMedicalHistory(patientId) {
 
 export function createConsultation(consultation) {
   return db.prepare(
-    'INSERT INTO consultations (visit_id, patient_id, doctor_id, chief_complaint, diagnosis, treatment_plan, notes) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    `INSERT INTO consultations
+       (visit_id, patient_id, doctor_id, chief_complaint, diagnosis, treatment_plan,
+        notes, subjective, objective, assessment, plan, status, signed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     consultation.visit_id, consultation.patient_id, consultation.doctor_id,
-    consultation.chief_complaint, consultation.diagnosis, consultation.treatment_plan, consultation.notes
+    // `?? null` matters: Zod omits absent optional keys, and node:sqlite
+    // rejects `undefined` as a bind value ("cannot be bound to parameter").
+    consultation.chief_complaint ?? null,
+    consultation.diagnosis ?? null,
+    consultation.treatment_plan ?? null,
+    consultation.notes ?? null,
+    consultation.subjective ?? null,
+    consultation.objective ?? null,
+    consultation.assessment ?? null,
+    consultation.plan ?? null,
+    consultation.status || 'Draft',
+    consultation.status === 'Signed' ? consultation.signed_at || new Date().toISOString() : null
   );
+}
+
+/**
+ * Persist a draft SOAP note. Kept separate from signConsultation so an
+ * autosave never marks a note as clinically final.
+ */
+export function updateConsultationSoap(id, data) {
+  return db.prepare(
+    `UPDATE consultations
+        SET chief_complaint = ?, subjective = ?, objective = ?, assessment = ?,
+            plan = ?, diagnosis = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?`
+  ).run(
+    data.chief_complaint ?? null, data.subjective ?? null, data.objective ?? null,
+    data.assessment ?? null, data.plan ?? null, data.diagnosis ?? null, id
+  );
+}
+
+/** Mark a note as clinically final. Idempotent: re-signing is a no-op. */
+export function signConsultation(id) {
+  return db.prepare(
+    `UPDATE consultations
+        SET status = 'Signed', signed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status != 'Signed'`
+  ).run(id);
+}
+
+export function getConsultationById(id) {
+  return db.prepare('SELECT * FROM consultations WHERE id = ?').get(id);
 }
 
 export function getConsultationsByPatient(patientId) {
@@ -149,8 +240,11 @@ export function createPrescription(prescription) {
     'INSERT INTO prescriptions (consultation_id, patient_id, medication_name, dosage, frequency, duration_days, instructions, prescribing_doctor_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     prescription.consultation_id, prescription.patient_id, prescription.medication_name,
-    prescription.dosage, prescription.frequency, prescription.duration_days,
-    prescription.instructions || null, prescription.prescribing_doctor_id, 'ORDERED'
+    prescription.dosage, prescription.frequency,
+    // `?? null`: Zod omits absent optional keys and node:sqlite cannot bind
+    // `undefined`. See the same fix in createConsultation.
+    prescription.duration_days ?? null,
+    prescription.instructions ?? null, prescription.prescribing_doctor_id, 'ORDERED'
   );
 }
 
