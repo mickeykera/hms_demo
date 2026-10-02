@@ -32,7 +32,7 @@ describe('API Integration Tests', () => {
     db = getTestDb();
     cleanupTestDb();
     // Create test users with hashed passwords
-    const roles = ['Admin', 'Receptionist', 'Doctor', 'Nurse', 'LabTech', 'Billing'];
+    const roles = ['Admin', 'Receptionist', 'Doctor', 'Nurse', 'LabTech', 'Billing', 'Pharmacy'];
     roles.forEach(role => {
       const passwordHash = bcrypt.hashSync(role, 10);
       try {
@@ -57,6 +57,58 @@ describe('API Integration Tests', () => {
   function authHeader(token) {
     return { Authorization: `Bearer ${token}` };
   }
+  describe('Pharmacy Queue Authorization', () => {
+    // The dispensing queue is deliberately narrower than
+    // MODULE_PERMISSIONS.Pharmacy (which also lists Doctor, Billing and
+    // DepartmentAdmin). The queue is the pharmacy's own hospital-wide work
+    // list, so it is limited to Pharmacy and Admin -- plus SuperAdmin, which
+    // authorize() passes unconditionally. These tests pin the list down so it
+    // is not widened by accident.
+    it('GET /api/pharmacy/queue should allow Pharmacy role', async () => {
+      const res = await request(app).get('/api/pharmacy/queue').set('Authorization', `Bearer ${authTokens.Pharmacy}`);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.queue)).toBe(true);
+      expect(typeof res.body.count).toBe('number');
+    });
+
+    it('GET /api/pharmacy/queue should allow Admin role', async () => {
+      const res = await request(app).get('/api/pharmacy/queue').set('Authorization', `Bearer ${authTokens.Admin}`);
+      expect(res.status).toBe(200);
+    });
+
+    it('GET /api/pharmacy/queue should reject Doctor role', async () => {
+      // Doctor and Billing may read a single patient's prescriptions, but must
+      // not see the whole-hospital dispensing queue.
+      const res = await request(app).get('/api/pharmacy/queue').set('Authorization', `Bearer ${authTokens.Doctor}`);
+      expect(res.status).toBe(403);
+    });
+
+    it('GET /api/pharmacy/queue should reject Billing role', async () => {
+      const res = await request(app).get('/api/pharmacy/queue').set('Authorization', `Bearer ${authTokens.Billing}`);
+      expect(res.status).toBe(403);
+    });
+
+    it('GET /api/pharmacy/queue should reject Nurse role', async () => {
+      const res = await request(app).get('/api/pharmacy/queue').set('Authorization', `Bearer ${authTokens.Nurse}`);
+      expect(res.status).toBe(403);
+    });
+
+    it('GET /api/pharmacy/queue should reject an unauthenticated request', async () => {
+      const res = await request(app).get('/api/pharmacy/queue');
+      expect(res.status).toBe(401);
+    });
+
+    it('GET /api/pharmacy/queue should expose only actionable statuses', async () => {
+      const res = await request(app).get('/api/pharmacy/queue').set('Authorization', `Bearer ${authTokens.Pharmacy}`);
+      expect(res.status).toBe(200);
+      const allowed = ['ORDERED', 'REVIEW_PENDING', 'APPROVED', 'DISPENSING'];
+      for (const row of res.body.queue) {
+        expect(allowed).toContain(row.status);
+      }
+    });
+  });
+
+
 
   describe('Health & Setup', () => {
     it('GET /api/health should return operational status', async () => {
