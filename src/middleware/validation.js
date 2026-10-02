@@ -287,6 +287,37 @@ export const schemas = {
     notes: z.string().optional(),
   }),
 
+  // Update is an allow-list, not a passthrough.
+  //
+  // This route used to hand `req.body` straight to updatePatient(), which
+  // interpolates the incoming keys into `SET column = ?`. That made `id` and
+  // `global_id` (the business key used by every other patient route)
+  // overwritable, and any other key a caller invented became a column name in
+  // the generated SQL. Zod strips unknown keys, so an explicit allow-list
+  // closes both.
+  patientUpdate: z.object({
+    first_name: z.string().min(1, 'First name is required').optional(),
+    last_name: z.string().min(1, 'Last name is required').optional(),
+    date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),
+    gender: z.enum(['Male', 'Female', 'Other', 'PreferNotToSay']).optional(),
+    blood_type: z.string().optional(),
+    email: z.string().email().optional().or(z.literal('')),
+    phone: z.string().min(1, 'Phone is required').optional(),
+    address: z.string().optional(),
+    emergency_contact_name: z.string().optional(),
+    emergency_contact_phone: z.string().optional(),
+    insurance_provider: z.string().optional(),
+    insurance_id: z.string().optional(),
+    insurance_validity: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+    medical_history_summary: z.string().optional(),
+    // Every field is optional because this is a partial update: callers send
+    // only what they are changing. The refine stops a fully empty body, which
+    // would otherwise build `UPDATE patients SET , updated_at = ...` -- invalid
+    // SQL surfaced to the client as a misleading 500.
+  }).refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  }),
+
   personnel: z.object({
     employee_id: z.string().min(1),
     user_id: z.number().int().positive().optional(),

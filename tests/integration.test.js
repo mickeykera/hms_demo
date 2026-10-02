@@ -93,6 +93,73 @@ describe('API Integration Tests', () => {
   });
 
   describe('Reception Module', () => {
+    it('PUT /api/reception/:globalId applies allowed fields but never id or global_id', async () => {
+      const created = await request(app)
+        .post('/api/reception/register')
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ first_name: 'Original', last_name: 'Name', date_of_birth: '1990-01-01', gender: 'Female', phone: '5550000' });
+      expect(created.status).toBe(201);
+      const globalId = created.body.global_id;
+
+      const before = db.prepare('SELECT id, global_id FROM patients WHERE global_id = ?').get(globalId);
+
+      // `id`/`global_id` are not in the allow-list, and Zod strips unknown
+      // keys, so they are ignored rather than interpolated into the UPDATE.
+      const res = await request(app)
+        .put(`/api/reception/${globalId}`)
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ id: 999999, global_id: 'HIJACKED', first_name: 'Updated' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.patient.first_name).toBe('Updated');
+
+      const after = db.prepare('SELECT id, global_id FROM patients WHERE global_id = ?').get(globalId);
+      expect(after.id).toBe(before.id);
+      expect(after.global_id).toBe(globalId);
+      expect(db.prepare('SELECT COUNT(*) AS n FROM patients WHERE global_id = ?').get('HIJACKED').n).toBe(0);
+    });
+
+    it('PUT /api/reception/:globalId rejects an empty body with 400', async () => {
+      const created = await request(app)
+        .post('/api/reception/register')
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ first_name: 'Empty', last_name: 'Body', date_of_birth: '1990-01-01', gender: 'Male', phone: '5550001' });
+
+      // Previously produced `UPDATE patients SET , updated_at = ...` -> 500.
+      const res = await request(app)
+        .put(`/api/reception/${created.body.global_id}`)
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+    });
+
+    it('PUT /api/reception/:globalId rejects unknown fields and bad values with 400', async () => {
+      const created = await request(app)
+        .post('/api/reception/register')
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ first_name: 'Bad', last_name: 'Values', date_of_birth: '1990-01-01', gender: 'Male', phone: '5550002' });
+      const gid = created.body.global_id;
+
+      const unknownField = await request(app)
+        .put(`/api/reception/${gid}`)
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ not_a_column: 'x' });
+      expect(unknownField.status).toBe(400);
+
+      const badDate = await request(app)
+        .put(`/api/reception/${gid}`)
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ date_of_birth: 'not-a-date' });
+      expect(badDate.status).toBe(400);
+
+      const badGender = await request(app)
+        .put(`/api/reception/${gid}`)
+        .set('Authorization', `Bearer ${authTokens.Receptionist}`)
+        .send({ gender: 'Unknown' });
+      expect(badGender.status).toBe(400);
+    });
+
     it('POST /api/reception/register should create patient (Receptionist)', async () => {
       const res = await request(app)
         .post('/api/reception/register')

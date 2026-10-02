@@ -53,10 +53,12 @@ router.get('/:globalId', authorize(['Receptionist', 'Admin', 'Doctor', 'Nurse', 
   res.json({ patient });
 });
 
-router.put('/:globalId', authorize(['Receptionist', 'Admin', 'Doctor']), (req, res) => {
+router.put('/:globalId', authorize(['Receptionist', 'Admin', 'Doctor']), validate('patientUpdate'), (req, res) => {
   const patient = db.getPatientByGlobalId(req.params.globalId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
-  db.updatePatient(patient.id, req.body);
+  // req.validated is an allow-list, so callers cannot rewrite id/global_id or
+  // inject arbitrary column names into the generated UPDATE.
+  db.updatePatient(patient.id, req.validated);
   res.json({ success: true, patient: db.getPatientByGlobalId(req.params.globalId) });
 });
 
