@@ -18,7 +18,7 @@ export function initTestDb() {
   const testDbPath = process.env.DB_PATH || join(__dirname, '..', 'test-hospital.db');
   
   testDb = new DatabaseSync(testDbPath);
-  testDb.exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
+  testDb.exec(`PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
 
   const schemaPath = join(__dirname, '..', 'src', 'config', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');

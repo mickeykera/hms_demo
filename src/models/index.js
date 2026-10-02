@@ -64,7 +64,11 @@ function getOrCreateDb() {
   const dbPath = process.env.DB_PATH || join(__dirname, '..', '..', 'hospital.db');
   console.log('Server using database:', dbPath);
   db = new DatabaseSync(dbPath);
-  db.exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
+  // busy_timeout makes SQLite wait for a competing writer instead of throwing
+  // SQLITE_BUSY immediately. Two connections can legitimately share this file in
+  // tests (the harness and the server module both open DB_PATH), and without the
+  // wait the loser failed the test with 'database is locked'.
+  db.exec(`PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
   
   const schemaPath = join(__dirname, '..', 'config', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
