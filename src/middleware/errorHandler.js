@@ -40,28 +40,54 @@ export class ConflictError extends AppError {
 }
 
 export function errorHandler(err, req, res, next) {
-  console.error(`[ERROR] ${new Date().toISOString()} - ${req.method} ${req.path}`, {
+  const { status, body } = classify(err);
+
+  // Log level follows the status we are actually sending. A 5xx is our fault and
+  // needs the stack to debug; a 4xx is a client mistake, and logging those at
+  // error severity buries real failures under expected conditions like a
+  // duplicate insert or a missing patient. The stack is dropped from 4xx because
+  // it exposes file paths and internals for input the caller already controls.
+  const level = status >= 500 ? 'ERROR' : 'WARN';
+  const context = {
     message: err.message,
     code: err.code || 'UNKNOWN',
-    statusCode: err.statusCode || 500,
-    stack: err.stack,
+    statusCode: status,
     user: req.user ? { id: req.user.id, role: req.user.role } : null,
-  });
+  };
+  const line = `[${level}] ${new Date().toISOString()} - ${req.method} ${req.path}`;
 
+  if (status >= 500) {
+    console.error(line, { ...context, stack: err.stack });
+  } else {
+    console.warn(line, context);
+  }
+
+  return res.status(status).json(body);
+}
+
+// Maps an error onto the status/body pair sent to the client. Kept separate from
+// the logging so the two can never drift apart.
+function classify(err) {
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      error: err.message,
-      code: err.code,
-      details: err.details,
-    });
+    return {
+      status: err.statusCode,
+      body: {
+        error: err.message,
+        code: err.code,
+        details: err.details,
+      },
+    };
   }
 
   if (err.name === 'ZodError') {
-    return res.status(400).json({
-      error: 'Validation failed',
-      code: 'VALIDATION_ERROR',
-      details: err.flatten().fieldErrors,
-    });
+    return {
+      status: 400,
+      body: {
+        error: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        details: err.flatten().fieldErrors,
+      },
+    };
   }
 
   // node:sqlite does not set code === 'SQLITE_CONSTRAINT'. It reports a generic
@@ -72,37 +98,34 @@ export function errorHandler(err, req, res, next) {
   if (err.code === 'ERR_SQLITE_ERROR' || err.code === 'SQLITE_CONSTRAINT' || err.errcode === 2067) {
     const message = err.message || '';
     if (message.includes('UNIQUE constraint failed')) {
-      return res.status(409).json({
-        error: 'Duplicate entry',
-        code: 'DUPLICATE_ENTRY',
-      });
+      return { status: 409, body: { error: 'Duplicate entry', code: 'DUPLICATE_ENTRY' } };
     }
     if (message.includes('FOREIGN KEY constraint failed')) {
-      return res.status(400).json({
-        error: 'Referenced resource does not exist',
-        code: 'FOREIGN_KEY_VIOLATION',
-      });
+      return {
+        status: 400,
+        body: { error: 'Referenced resource does not exist', code: 'FOREIGN_KEY_VIOLATION' },
+      };
     }
     if (message.includes('NOT NULL constraint failed') || message.includes('CHECK constraint failed')) {
-      return res.status(400).json({
-        error: 'Request violates a database constraint',
-        code: 'CONSTRAINT_VIOLATION',
-      });
+      return {
+        status: 400,
+        body: { error: 'Request violates a database constraint', code: 'CONSTRAINT_VIOLATION' },
+      };
     }
   }
 
   if (err.code === 'SQLITE_CONSTRAINT' || err.errstr === 'constraint failed') {
     // A constraint error we did not classify above.
-    return res.status(400).json({
-      error: 'Request violates a database constraint',
-      code: 'CONSTRAINT_VIOLATION',
-    });
+    return {
+      status: 400,
+      body: { error: 'Request violates a database constraint', code: 'CONSTRAINT_VIOLATION' },
+    };
   }
 
-  return res.status(500).json({
-    error: 'Internal Server Error',
-    code: 'INTERNAL_ERROR',
-  });
+  return {
+    status: 500,
+    body: { error: 'Internal Server Error', code: 'INTERNAL_ERROR' },
+  };
 }
 
 export function asyncHandler(fn) {

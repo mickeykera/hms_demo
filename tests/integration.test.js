@@ -4,6 +4,7 @@ import request from 'supertest';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getDb } from '../src/models/index.js';
+import { errorHandler } from '../src/middleware/errorHandler.js';
 
 // Set test database path before importing app
 import './test-env.js';
@@ -137,6 +138,63 @@ describe('API Integration Tests', () => {
         .set('Authorization', `Bearer ${authTokens.Nurse}`)
         .send({ name: 'Nope', code: 'NOP' });
       expect(wrongRole.status).toBe(403);
+    });
+
+    it('should log 4xx at warn without a stack, and 5xx at error with one', async () => {
+      const errors = [];
+      const warns = [];
+      const realError = console.error;
+      const realWarn = console.warn;
+      console.error = (...args) => errors.push(args);
+      console.warn = (...args) => warns.push(args);
+
+      const fakeRes = {
+        statusCode: null,
+        body: null,
+        status(code) { this.statusCode = code; return this; },
+        json(payload) { this.body = payload; return this; },
+      };
+
+      try {
+        // 4xx path: a duplicate insert reaches the error handler.
+        await request(app)
+          .post('/api/departments')
+          .set('Authorization', `Bearer ${authTokens.Admin}`)
+          .send({ name: 'Log Level Ward', code: 'LLW' });
+        const dupe = await request(app)
+          .post('/api/departments')
+          .set('Authorization', `Bearer ${authTokens.Admin}`)
+          .send({ name: 'Log Level Ward', code: 'LLW2' });
+        expect(dupe.status).toBe(409);
+
+        // 5xx path: drive the handler directly. There is no route that throws an
+        // unclassified error on purpose, and adding one just for this test would
+        // add an endpoint that exists only to be broken.
+        const boom = new Error('kaboom');
+        errorHandler(boom, { method: 'GET', path: '/api/boom', user: null }, fakeRes, () => {});
+        expect(fakeRes.statusCode).toBe(500);
+      } finally {
+        console.error = realError;
+        console.warn = realWarn;
+      }
+
+      const warnArgs = warns.flat();
+      const errorArgs = errors.flat();
+
+      // The 409 must be a warn, and must NOT carry a stack.
+      expect(warns.length).toBeGreaterThan(0);
+      const warnStr = warnArgs.map(String).join(' ');
+      expect(warnStr).toContain('[WARN]');
+      expect(warnStr).toContain('/api/departments');
+      const warnCtx = warnArgs.find((a) => a && a.statusCode === 409);
+      expect(warnCtx).toBeTruthy();
+      expect(warnCtx.stack).toBeUndefined();
+
+      // The 5xx must be an error-level entry, and must carry a stack.
+      const errCtx = errorArgs.find((a) => a && a.statusCode === 500);
+      expect(errCtx).toBeTruthy();
+      expect(errCtx.stack).toBeTruthy();
+      expect(errorArgs.map(String).join(' ')).toContain('/api/boom');
     });
   });
 
