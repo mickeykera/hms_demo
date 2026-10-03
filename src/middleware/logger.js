@@ -4,6 +4,32 @@ export function requestLogger(req, res, next) {
 
   req.requestId = requestId;
 
+  // === TEMPORARY DIAGNOSTIC -- REMOVE AFTER CHOOSING A trust proxy VALUE ===
+  //
+  // Goal: on Render, `trust proxy = 1` yields internal 10.x addresses and a
+  // different value per request from the same browser. We need to see the real
+  // chain before picking a hop count (or a specific trusted header).
+  //
+  // SAFE BY CONSTRUCTION: an explicit allow-list. req.headers is NEVER dumped
+  // wholesale, because that would print Authorization and Cookie. Only the four
+  // proxy/IP headers below are read, so no credential can appear here. The
+  // header names are matched case-insensitively by req.get().
+  const PROBE_HEADERS = ['x-forwarded-for', 'x-real-ip', 'true-client-ip', 'cf-connecting-ip'];
+  const headerProbe = {};
+  for (const name of PROBE_HEADERS) {
+    const value = req.get(name);
+    if (value !== undefined) headerProbe[name] = value;
+  }
+  console.log(`[PROBE ${requestId}] ${req.method} ${req.path}`, {
+    headers: headerProbe,
+    reqIp: req.ip,
+    reqIps: req.ips,
+    socketRemoteAddress: req.socket?.remoteAddress,
+    trustProxySetting: req.app?.get?.('trust proxy'),
+    remoteFamily: req.socket?.remoteFamily,
+  });
+  // === END TEMPORARY DIAGNOSTIC ===
+
   console.log(`[REQUEST] ${new Date().toISOString()} - ${req.method} ${req.path}`, {
     requestId,
     ip: req.ip || req.connection.remoteAddress,
