@@ -321,6 +321,73 @@ describe('API Integration Tests', () => {
       }
       expect(sawLimit).toBe(true);
     });
+    it('should rate limit per forwarded client IP, not the shared socket', async () => {
+      process.env.DEMO_QUICK_LOGIN = 'true';
+
+      // Exhaust one client IP's bucket by spoofing nothing -- just a single
+      // forwarded address standing in for "the real browser".
+      let sawLimit = false;
+      for (let i = 0; i < 30; i += 1) {
+        const res = await request(app)
+          .post('/api/auth/demo-login')
+          .set('X-Forwarded-For', '203.0.113.10')
+          .send({ username: 'nurse' });
+        if (res.status === 429) {
+          sawLimit = true;
+          break;
+        }
+      }
+      expect(sawLimit).toBe(true);
+
+      // A different client IP must have its own bucket. Without `trust proxy`,
+      // every one of these shared the socket address and this would also 429 --
+      // which is the bug: one abusive visitor throttles the entire site.
+      const other = await request(app)
+        .post('/api/auth/demo-login')
+        .set('X-Forwarded-For', '203.0.113.99')
+        .send({ username: 'nurse' });
+      expect(other.status).toBe(200);
+      expect(other.body.token).toBeTruthy();
+    });
+
+    it('should use the proxy-appended address, not a client-supplied one', async () => {
+      process.env.DEMO_QUICK_LOGIN = 'true';
+
+      // Simulates what Render actually sends: a client-supplied value that the
+      // proxy appended its own address to. With `trust proxy = 1` Express reads
+      // the right-most (proxy-appended) entry. If it read the left-most value
+      // instead, a client could mint a fresh rate-limit bucket per request by
+      // sending its own X-Forwarded-For and defeat the limiter entirely.
+      const res = await request(app)
+        .post('/api/auth/demo-login')
+        .set('X-Forwarded-For', '1.2.3.4, 198.51.100.7')
+        .send({ username: 'nurse' });
+
+      expect(res.status).toBe(200);
+
+      // Burn 198.51.100.7's bucket -- the address Express should have keyed on.
+      let sawLimit = false;
+      for (let i = 0; i < 30; i += 1) {
+        const again = await request(app)
+          .post('/api/auth/demo-login')
+          .set('X-Forwarded-For', '1.2.3.4, 198.51.100.7')
+          .send({ username: 'nurse' });
+        if (again.status === 429) {
+          sawLimit = true;
+          break;
+        }
+      }
+      // The proxy-appended address is what got limited, proving the client-
+      // supplied left-hand value was ignored.
+      expect(sawLimit).toBe(true);
+
+      // A different appended address is unaffected.
+      const other = await request(app)
+        .post('/api/auth/demo-login')
+        .set('X-Forwarded-For', '1.2.3.4, 198.51.100.8')
+        .send({ username: 'nurse' });
+      expect(other.status).toBe(200);
+    });
   });
 
   describe('Pharmacy Queue Authorization', () => {

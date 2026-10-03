@@ -48,6 +48,26 @@ import { seedDemoData } from './config/seed.js';
 import { runMigrations } from './config/migrations.js';
 
 const app = express();
+
+// Render terminates TLS and forwards the request, so the socket address is
+// Render's proxy -- not the browser. Without this, req.ip is the proxy for
+// every single visitor.
+//
+// `1` means "trust exactly one hop": Express reads X-Forwarded-For and takes
+// the address the proxy appended (the right-most untrusted entry), which is the
+// real client. It deliberately does NOT trust the left-most value, so a client
+// that sends its own X-Forwarded-For: 1.2.3.4 cannot spoof the identity -- the
+// proxy overwrites/appends, and only the hop we explicitly delegate to is read.
+//
+// This matters beyond rate limiting: req.ip is also written to audit logs by
+// clinical, lab, appointments, pharmacy, radiology, requests, documents, wards,
+// procurement and emergency, plus the request logger. Without this, every one of
+// those records the proxy address instead of the person who acted.
+//
+// Set to 1, never `true`: `true` would trust the entire chain and hand any
+// client full control of req.ip.
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'test-secret');
 if (!JWT_SECRET) {
