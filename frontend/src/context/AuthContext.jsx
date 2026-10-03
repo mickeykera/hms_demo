@@ -94,9 +94,21 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const res = await authService.login(username, password);
-    const { token, user: responseUser } = res.data;
-    const userData = { 
-      ...responseUser, 
+    return establishSession(res.data);
+  };
+
+  // Demo shortcut. The server decides whether this is available at all; the
+  // response shape is identical to a normal login, so both paths share
+  // establishSession and cannot drift apart in how a session is set up.
+  const demoLogin = async (username) => {
+    const res = await authService.demoLogin(username);
+    return establishSession(res.data);
+  };
+
+  // Single place where a successful auth response becomes an app session.
+  const establishSession = ({ token, user: responseUser }) => {
+    const userData = {
+      ...responseUser,
       workspacePath: getWorkspacePath(responseUser.role),
       displayRole: roleDisplayNames[responseUser.role] || responseUser.role,
     };
@@ -128,6 +140,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{ 
       user, 
       login, 
+      demoLogin,
       logout, 
       hasRole, 
       hasAnyRole,

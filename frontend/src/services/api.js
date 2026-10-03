@@ -27,6 +27,14 @@ api.interceptors.response.use(
 
 export const authService = {
   login: (username, password) => api.post('/auth/login', { username, password }),
+  // Server-side demo shortcut. Takes no password: the endpoint only issues a
+  // token for an allow-listed demo username, and 404s unless the server has
+  // DEMO_QUICK_LOGIN=true. Returns the same { token, user } shape as login().
+  demoLogin: (username) => api.post('/auth/demo-login', { username }),
+};
+
+export const configService = {
+  public: () => api.get('/config/public'),
 };
 
 export const patientService = {

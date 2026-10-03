@@ -118,6 +118,139 @@ app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => 
   });
 }));
 
+// Demo quick-login.
+//
+// The demo seeder assigns every demo account the predictable password
+// "Username" in development, which is what the login page's demo tiles used to
+// type. In production the seeder refuses those defaults and uses
+// SEED_DEMO_PASSWORD instead, so those tiles 401 against a real deployment.
+//
+// This endpoint restores the one-click demo path *without* reintroducing the
+// weak password: it hands out a token for an allow-listed demo username and
+// never accepts, transmits, or logs a password at all.
+//
+// SECURITY: with DEMO_QUICK_LOGIN=true this is public, unauthenticated access
+// to every demo role including SuperAdmin. That is a deliberate trade for a
+// demo deployment and is why it is off unless explicitly enabled. It must stay
+// off anywhere real data lives.
+//
+// Disabled is the default and is checked per request (not at import time) so
+// tests can toggle it without reimporting the app.
+function isDemoQuickLoginEnabled() {
+  return process.env.DEMO_QUICK_LOGIN === 'true';
+}
+
+// Fixed allow-list, matching exactly the usernames the demo seeder creates.
+// Deliberately not derived from the database: a user created through normal
+// provisioning must not become reachable through the demo shortcut.
+const DEMO_QUICK_LOGIN_USERNAMES = Object.freeze([
+  'superadmin',
+  'admin',
+  'receptionist',
+  'doctor',
+  'nurse',
+  'labtech',
+  'pharmacy',
+  'radiology',
+  'billing',
+  'patient',
+]);
+
+// In-memory fixed-window rate limiter.
+//
+// A Map keyed by client IP is enough here: this is a single endpoint on a
+// single instance, and the goal is to blunt casual hammering rather than to
+// provide a distributed quota. Entries are pruned on access so the map cannot
+// grow without bound.
+const DEMO_LOGIN_WINDOW_MS = 60_000;
+const DEMO_LOGIN_MAX_PER_WINDOW = 20;
+const demoLoginHits = new Map();
+
+function clientKey(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function rateLimitDemoLogin(req) {
+  const now = Date.now();
+  const key = clientKey(req);
+
+  for (const [k, entry] of demoLoginHits) {
+    if (now - entry.start > DEMO_LOGIN_WINDOW_MS) demoLoginHits.delete(k);
+  }
+
+  const entry = demoLoginHits.get(key);
+  if (!entry || now - entry.start > DEMO_LOGIN_WINDOW_MS) {
+    demoLoginHits.set(key, { start: now, count: 1 });
+    return true;
+  }
+
+  entry.count += 1;
+  return entry.count <= DEMO_LOGIN_MAX_PER_WINDOW;
+}
+
+app.get('/api/config/public', (req, res) => {
+  // Lets the login page hide the Demo Accounts section instead of rendering
+  // buttons that 404. Deliberately exposes only whether the feature is on.
+  res.json({ demoQuickLogin: isDemoQuickLoginEnabled() });
+});
+
+app.post('/api/auth/demo-login', asyncHandler(async (req, res) => {
+  if (!isDemoQuickLoginEnabled()) {
+    // 404 rather than 403: when the feature is off the endpoint should not be
+    // discoverable at all, so the UI can treat it as simply absent.
+    throw new AppError('Not found', 404, 'NOT_FOUND');
+  }
+
+  if (!rateLimitDemoLogin(req)) {
+    console.warn(
+      `[WARN] ${new Date().toISOString()} - POST /api/auth/demo-login rate limited`,
+      { ip: clientKey(req), windowMs: DEMO_LOGIN_WINDOW_MS, max: DEMO_LOGIN_MAX_PER_WINDOW }
+    );
+    throw new AppError('Too many demo login attempts. Try again shortly.', 429, 'RATE_LIMITED');
+  }
+
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim().toLowerCase() : '';
+
+  // 404 for anything not on the list, so this endpoint cannot be used to probe
+  // which real accounts exist. 401 would confirm the difference.
+  if (!username || !DEMO_QUICK_LOGIN_USERNAMES.includes(username)) {
+    throw new AppError('Not found', 404, 'NOT_FOUND');
+  }
+
+  const user = getUserByUsername(username);
+  if (!user) {
+    // Allow-listed but absent: demo seeding has not run yet.
+    throw new AppError('Demo account is not available', 404, 'DEMO_ACCOUNT_UNAVAILABLE');
+  }
+
+  // No password is read or compared here. That is the whole point: the demo
+  // password is a deployment secret and this path never touches it.
+  const token = jwt.sign(
+    { id: user.id, username: user.username, role: user.role },
+    JWT_SECRET,
+    { expiresIn: '8h' }
+  );
+
+  // Audit trail for a public credential-issuing endpoint. Logs the username and
+  // role only -- never a token, password, or Authorization header.
+  console.warn(
+    `[WARN] ${new Date().toISOString()} - demo quick-login issued`,
+    { username: user.username, role: user.role, ip: clientKey(req) }
+  );
+
+  res.json({
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      full_name: user.full_name,
+      role: user.role,
+      department: user.department,
+      permissions: getPermissionsForRole(user.role),
+    },
+  });
+}));
+
 const frontendDist = join(__dirname, '..', 'frontend', 'dist');
 if (existsSync(frontendDist)) {
   app.use(express.static(frontendDist, { index: false }));

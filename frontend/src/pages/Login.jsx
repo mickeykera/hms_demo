@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, getWorkspacePath } from '../context/AuthContext';
+import { configService } from '../services/api';
 import { Loader2, Hospital, Shield, Heart, Stethoscope, Users } from 'lucide-react';
 
 export default function Login() {
@@ -9,17 +10,47 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
-  const { login } = useAuth();
+  // Whether the server offers the demo shortcut. Defaults to false so the
+  // section stays hidden until the server confirms it is on -- rendering
+  // buttons that would only ever 404 is worse than not showing them.
+  const [demoQuickLogin, setDemoQuickLogin] = useState(false);
+  const { login, demoLogin } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    configService.public()
+      .then((res) => { if (!cancelled) setDemoQuickLogin(!!res.data?.demoQuickLogin); })
+      // A failure here is not fatal: normal login still works, we just keep the
+      // demo section hidden.
+      .catch(() => { if (!cancelled) setDemoQuickLogin(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
     await performLogin(username, password);
   };
 
-  // Demo-account tiles log in immediately instead of only filling the form,
-  // so a single click takes you to that role's dashboard.
-  const handleDemoLogin = (demo) => performLogin(demo.username, demo.password);
+  // Demo-account tiles now call the server-side shortcut rather than submitting
+  // a hard-coded password. In production the demo password is SEED_DEMO_PASSWORD,
+  // which the old tiles could never have known, so they failed with a 401.
+  const handleDemoLogin = (demo) => performDemoLogin(demo.username);
+
+  const performDemoLogin = async (uname) => {
+    setError('');
+    setLoading(true);
+    setPendingUser(uname);
+    try {
+      const user = await demoLogin(uname);
+      navigate(user?.workspacePath || getWorkspacePath(user?.role));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Demo login is not available on this deployment.');
+    } finally {
+      setLoading(false);
+      setPendingUser(null);
+    }
+  };
 
   const performLogin = async (uname, pwd) => {
     setError('');
@@ -36,17 +67,20 @@ export default function Login() {
     }
   };
 
+  // Labels only. The password field is gone: the demo shortcut is a server-side
+  // endpoint, so no credential is ever embedded in the bundle. This list must
+  // stay in step with DEMO_QUICK_LOGIN_USERNAMES in src/server.js.
   const demoUsers = [
-    { username: 'admin', password: 'Admin', role: 'Administrator' },
-    { username: 'superadmin', password: 'SuperAdmin', role: 'Super Administrator' },
-    { username: 'doctor', password: 'Doctor', role: 'Physician' },
-    { username: 'receptionist', password: 'Receptionist', role: 'Receptionist' },
-    { username: 'nurse', password: 'Nurse', role: 'Nurse' },
-    { username: 'labtech', password: 'LabTech', role: 'Lab Technician' },
-    { username: 'pharmacy', password: 'Pharmacy', role: 'Pharmacy' },
-    { username: 'radiology', password: 'Radiology', role: 'Radiology' },
-    { username: 'billing', password: 'Billing', role: 'Billing Staff' },
-    { username: 'patient', password: 'Patient', role: 'Patient' },
+    { username: 'admin', role: 'Administrator' },
+    { username: 'superadmin', role: 'Super Administrator' },
+    { username: 'doctor', role: 'Physician' },
+    { username: 'receptionist', role: 'Receptionist' },
+    { username: 'nurse', role: 'Nurse' },
+    { username: 'labtech', role: 'Lab Technician' },
+    { username: 'pharmacy', role: 'Pharmacy' },
+    { username: 'radiology', role: 'Radiology' },
+    { username: 'billing', role: 'Billing Staff' },
+    { username: 'patient', role: 'Patient' },
   ];
 
   return (
@@ -164,28 +198,30 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-sm text-gray-500 mb-3 text-center">Demo Accounts</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
-                {demoUsers.map(demo => (
-                  <button
-                    key={demo.username}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleDemoLogin(demo)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs border border-border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {pendingUser === demo.username && (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{demo.username}</div>
-                      <div className="text-gray-500 truncate">{demo.role}</div>
-                    </div>
-                  </button>
-                ))}
+            {demoQuickLogin && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <p className="text-sm text-gray-500 mb-3 text-center">Demo Accounts</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                  {demoUsers.map(demo => (
+                    <button
+                      key={demo.username}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleDemoLogin(demo)}
+                      className="flex items-center gap-2 px-3 py-2 text-xs border border-border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {pendingUser === demo.username && (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{demo.username}</div>
+                        <div className="text-gray-500 truncate">{demo.role}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

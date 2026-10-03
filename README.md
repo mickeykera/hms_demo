@@ -172,6 +172,8 @@ NODE_ENV=production
 ENABLE_API_DOCS=false
 # Only needed when SEED_DEMO_DATA=true:
 SEED_DEMO_PASSWORD=replace_with_a_strong_secret
+# Demo deployment only. See the warning below before setting this.
+DEMO_QUICK_LOGIN=true
 ```
 
 Important notes:
@@ -186,6 +188,38 @@ Important notes:
   capitalised username) or is shorter than 16 characters. Generate a value with
   `openssl rand -hex 24`. Never commit it — on Render use
   `generateValue: true`, which keeps the secret out of git.
+
+### DEMO_QUICK_LOGIN (demo deployments only)
+
+> **WARNING: this hands a logged-in session to every visitor.**
+>
+> With `DEMO_QUICK_LOGIN=true`, `POST /api/auth/demo-login` returns a valid token
+> for any of the ten seeded demo usernames — **including `superadmin`** — with
+> **no password at all**. It is restricted to that fixed allow-list and is rate
+> limited to 20 attempts per IP per minute, but the practical effect is that
+> anyone who can reach your URL gets an Admin session by clicking a button.
+>
+> This is a deliberate trade for a public demo. It is **unacceptable** in any
+> deployment holding real patient data. Set it to `false`, or omit it entirely,
+> for a real deployment.
+
+Off unless set to exactly `true`, and checked per request so a redeploy or a
+dashboard change takes effect without a code change. When off, the endpoint
+returns **404** (not 403) so it is not discoverable, and the login page hides its
+Demo Accounts section entirely by reading `GET /api/config/public`.
+
+The endpoint never accepts, transmits, or logs a password — it only reads the
+username, checks it against the allow-list, and issues a token. Each use is
+logged at `warn` level with the username and role only. Rate-limited rejections
+are logged too, so repeated attempts are visible without storing secrets.
+
+It does not weaken normal login: `/api/auth/login` still requires the real
+password, and `SEED_DEMO_PASSWORD` is still required for production seeding.
+
+| Value | Behaviour |
+| --- | --- |
+| unset / `false` | Endpoint 404s, login page hides the Demo Accounts section. |
+| `true` | Demo tiles issue a real token for the allow-listed demo users. |
 
 The frontend accepts its API URL at build time:
 

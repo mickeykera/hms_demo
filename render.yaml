@@ -32,3 +32,17 @@ services:
       # (username as password). generateValue keeps the secret out of git.
       - key: SEED_DEMO_PASSWORD
         generateValue: true
+      # WARNING -- THIS GIVES EVERY VISITOR A LOGGED-IN DEMO SESSION.
+      #
+      # With DEMO_QUICK_LOGIN=true, POST /api/auth/demo-login hands out a valid
+      # token for any of the ten seeded demo usernames (including superadmin)
+      # with no password at all. The endpoint is only allow-listed to those demo
+      # accounts and is rate limited, but "rate limited" still means anyone who
+      # can reach the URL can walk into an Admin session.
+      #
+      # That is an acceptable trade for a public demo and is unacceptable
+      # anywhere real patient data exists. Set it to false (or remove it) for any
+      # real deployment. Normal /api/auth/login and the SEED_DEMO_PASSWORD
+      # requirement are unaffected either way.
+      - key: DEMO_QUICK_LOGIN
+        value: "true"

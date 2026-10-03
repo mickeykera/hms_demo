@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { initTestDb, getTestDb, cleanupTestDb, closeTestDb } from './setup.js';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
@@ -195,6 +195,131 @@ describe('API Integration Tests', () => {
       expect(errCtx).toBeTruthy();
       expect(errCtx.stack).toBeTruthy();
       expect(errorArgs.map(String).join(' ')).toContain('/api/boom');
+    });
+  });
+
+  describe('Demo Quick Login', () => {
+    // The demo tiles used to submit username/capitalised-username, which the
+    // production seeder deliberately refuses. These cover the replacement
+    // server-side shortcut and, just as importantly, that it does not weaken
+    // normal login.
+
+    afterEach(() => {
+      delete process.env.DEMO_QUICK_LOGIN;
+    });
+
+    it('should report the feature as off when DEMO_QUICK_LOGIN is unset', async () => {
+      delete process.env.DEMO_QUICK_LOGIN;
+
+      const flag = await request(app).get('/api/config/public');
+      expect(flag.status).toBe(200);
+      expect(flag.body.demoQuickLogin).toBe(false);
+    });
+
+    it('should return 404 when DEMO_QUICK_LOGIN is not enabled', async () => {
+      // Unset, and explicitly 'false', must behave identically.
+      delete process.env.DEMO_QUICK_LOGIN;
+      const unset = await request(app)
+        .post('/api/auth/demo-login')
+        .send({ username: 'admin' });
+      expect(unset.status).toBe(404);
+
+      process.env.DEMO_QUICK_LOGIN = 'false';
+      const disabled = await request(app)
+        .post('/api/auth/demo-login')
+        .send({ username: 'admin' });
+      expect(disabled.status).toBe(404);
+      expect(disabled.body.code).toBe('NOT_FOUND');
+    });
+
+    it('should 404 for a username outside the allow-list when enabled', async () => {
+      process.env.DEMO_QUICK_LOGIN = 'true';
+
+      // 404 rather than 401: a 401 would confirm the account exists.
+      const res = await request(app)
+        .post('/api/auth/demo-login')
+        .send({ username: 'definitely-not-a-demo-user' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe('NOT_FOUND');
+      expect(res.body.token).toBeUndefined();
+    });
+
+    it('should return the normal login shape for an allow-listed username', async () => {
+      process.env.DEMO_QUICK_LOGIN = 'true';
+
+      const res = await request(app)
+        .post('/api/auth/demo-login')
+        .send({ username: 'doctor' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeTruthy();
+      // Same payload shape as /api/auth/login, so the client can treat both
+      // paths identically.
+      expect(res.body.user).toEqual(
+        expect.objectContaining({
+          id: expect.any(Number),
+          username: 'doctor',
+          role: 'Doctor',
+          full_name: expect.any(String),
+          department: expect.anything(),
+          permissions: expect.any(Array),
+        })
+      );
+
+      // The token must actually work against a protected route.
+      const authed = await request(app)
+        .get('/api/departments')
+        .set('Authorization', `Bearer ${res.body.token}`);
+      expect(authed.status).toBe(200);
+    });
+
+    it('should accept a case-different allow-listed username', async () => {
+      process.env.DEMO_QUICK_LOGIN = 'true';
+      const res = await request(app)
+        .post('/api/auth/demo-login')
+        .send({ username: '  Nurse  ' });
+      expect(res.status).toBe(200);
+      expect(res.body.user.username).toBe('nurse');
+    });
+
+    it('should still reject admin/Admin on normal login in production', async () => {
+      // Simulate production seeding: the admin account's password is the
+      // deployment secret, not the capitalised username. If anything about the
+      // demo shortcut weakened login, this would come back 200.
+      const secret = 'a-production-demo-secret-value';
+      db.prepare('UPDATE users SET password_hash = ? WHERE username = ?')
+        .run(bcrypt.hashSync(secret, 10), 'admin');
+
+      const rejected = await request(app)
+        .post('/api/auth/login')
+        .send({ username: 'admin', password: 'Admin' });
+      expect(rejected.status).toBe(401);
+      expect(rejected.body.code).toBe('INVALID_CREDENTIALS');
+
+      // The real secret still works, proving the account is intact.
+      const accepted = await request(app)
+        .post('/api/auth/login')
+        .send({ username: 'admin', password: secret });
+      expect(accepted.status).toBe(200);
+    });
+
+    it('should rate limit repeated demo login attempts', async () => {
+      process.env.DEMO_QUICK_LOGIN = 'true';
+
+      // Hammer the endpoint past the per-IP window limit. The limit is 20/min.
+      let sawLimit = false;
+      for (let i = 0; i < 30; i += 1) {
+        const res = await request(app)
+          .post('/api/auth/demo-login')
+          .send({ username: 'nurse' });
+        if (res.status === 429) {
+          expect(res.body.code).toBe('RATE_LIMITED');
+          sawLimit = true;
+          break;
+        }
+      }
+      expect(sawLimit).toBe(true);
     });
   });
 
