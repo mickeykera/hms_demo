@@ -166,6 +166,9 @@ function NurseNotesTab({ patients }) {
 }
 
 export default function NurseDashboard() {
+  // The other useQueryClient() in this file belongs to NurseNotesTab. This one
+  // is for the error banner's retry button, which renders here.
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useDashboardTab('overview', { patients: 'my-patients' });
