@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientService, clinicalService } from '../services/api';
+import { buildPatientUpdatePayload, isEmptyUpdate } from '../utils/patientUpdate';
 import { 
   Plus, Search, Edit, Eye, Calendar, UserPlus, 
   Stethoscope, AlertCircle, Loader2, MoreVertical,
@@ -21,6 +22,9 @@ export default function Reception() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState(null);
+  // Field-level messages from the server, e.g. { email: ['Invalid email'] }.
+  // The special key '_form' carries a non-field failure (network, 403, 404).
+  const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', date_of_birth: '', gender: 'Male',
     blood_type: '', email: '', phone: '', address: '',
@@ -50,6 +54,33 @@ export default function Reception() {
     }
   });
 
+  // Edit was previously a no-op: handleSubmit did nothing when editingPatient
+  // was set, so the Edit button opened a working-looking form and silently
+  // discarded every change. This calls the endpoint, sends only what changed,
+  // refreshes the list, and surfaces the server's field-level validation
+  // messages instead of failing silently.
+  const updateMutation = useMutation({
+    mutationFn: ({ globalId, payload }) => patientService.update(globalId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      setShowModal(false);
+      setEditingPatient(null);
+      setFormErrors({});
+    },
+    onError: (err) => {
+      // The API answers a validation failure as
+      // { error, code: 'VALIDATION_ERROR', details: { field: [messages] } }.
+      // Surface those against the form instead of a generic failure, so the
+      // user knows which input the server rejected.
+      const data = err?.response?.data;
+      if (data?.code === 'VALIDATION_ERROR' && data.details) {
+        setFormErrors(data.details);
+      } else {
+        setFormErrors({ _form: [data?.error || 'Could not save the patient. Please try again.'] });
+      }
+    },
+  });
+
   const checkinMutation = useMutation({
     mutationFn: ({ globalId, data }) => patientService.checkin(globalId, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['queue'] })
@@ -57,12 +88,25 @@ export default function Reception() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setFormErrors({});
+
     if (editingPatient) {
-      // patientService.update(editingPatient.global_id, formData)
+      const payload = buildPatientUpdatePayload(editingPatient, formData);
+
+      // Nothing actually changed. Sending it would earn a 400 for an empty
+      // body, and silently closing the modal would hide that.
+      if (isEmptyUpdate(payload)) return;
+
+      updateMutation.mutate({ globalId: editingPatient.global_id, payload });
     } else {
       registerMutation.mutate(formData);
     }
   };
+
+  // Per-field message from the server, or nothing.
+  const fieldError = (name) => formErrors?.[name]?.[0];
+
+  const isSaving = registerMutation.isPending || updateMutation.isPending;
 
   const genders = ['Male', 'Female', 'Other', 'PreferNotToSay'];
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -145,7 +189,30 @@ export default function Reception() {
                 <p className="text-sm text-gray-500">{p.global_id} • {p.phone}</p>
                 <div className="flex gap-2 mt-2">
                   <button onClick={() => patientService.checkin(p.global_id, {})} className="btn-primary text-sm flex-1">Check-in</button>
-                  <button onClick={() => { setEditingPatient(p); setShowModal(true); setFormData(p); }} className="btn-secondary text-sm">Edit</button>
+                  <button onClick={() => {
+                      // Seed the form with only the editable fields. Passing the
+                      // whole row put id/global_id/created_at into formData,
+                      // which the diff in buildPatientUpdatePayload would then
+                      // have to work around.
+                      setEditingPatient(p);
+                      setFormErrors({});
+                      setFormData({
+                        first_name: p.first_name || '',
+                        last_name: p.last_name || '',
+                        date_of_birth: p.date_of_birth || '',
+                        gender: p.gender || 'Male',
+                        blood_type: p.blood_type || '',
+                        email: p.email || '',
+                        phone: p.phone || '',
+                        address: p.address || '',
+                        emergency_contact_name: p.emergency_contact_name || '',
+                        emergency_contact_phone: p.emergency_contact_phone || '',
+                        insurance_provider: p.insurance_provider || '',
+                        insurance_id: p.insurance_id || '',
+                        insurance_validity: p.insurance_validity || '',
+                      });
+                      setShowModal(true);
+                    }} className="btn-secondary text-sm">Edit</button>
                 </div>
               </div>
             ))}
@@ -184,19 +251,29 @@ export default function Reception() {
                 <Download size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4" noValidate>
+              {/* Form-level failure (network, 403, 404, 500). Field-level
+                  messages render against their own input below. */}
+              {formErrors._form && (
+                <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                  {formErrors._form.join(' ')}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
                   <input type="text" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} className="input" />
+                  {fieldError('first_name') && <p role="alert" className="mt-1 text-sm text-red-600">{fieldError('first_name')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
                   <input type="text" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} className="input" />
+                  {fieldError('last_name') && <p role="alert" className="mt-1 text-sm text-red-600">{fieldError('last_name')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
                   <input type="date" required value={formData.date_of_birth} onChange={e => setFormData({...formData, date_of_birth: e.target.value})} className="input" />
+                  {fieldError('date_of_birth') && <p role="alert" className="mt-1 text-sm text-red-600">{fieldError('date_of_birth')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
@@ -214,10 +291,12 @@ export default function Reception() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
                   <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="input" />
+                  {fieldError('phone') && <p role="alert" className="mt-1 text-sm text-red-600">{fieldError('phone')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="input" />
+                  {fieldError('email') && <p role="alert" className="mt-1 text-sm text-red-600">{fieldError('email')}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
@@ -241,8 +320,8 @@ export default function Reception() {
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
-                <button type="submit" disabled={registerMutation.isPending} className="btn-primary">
-                  {registerMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : ''}
+                <button type="submit" disabled={isSaving} className="btn-primary">
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : ''}
                   {editingPatient ? 'Update' : 'Register'}
                 </button>
               </div>
