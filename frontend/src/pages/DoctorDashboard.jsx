@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useDashboardTab } from '../hooks/useDashboardTab';
 import { useQuery } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
+import QueryErrorBanner from '../components/QueryErrorBanner';
 import { useAuth } from '../context/AuthContext';
 import {
   Calendar, Users, FileText, Pill, FlaskConical, Activity,
@@ -68,6 +70,7 @@ function ConsultationPrescriptions({ consultationId }) {
 }
 
 export default function DoctorDashboard() {
+  const queryClient = useQueryClient();
   const { user, hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useDashboardTab('overview', { patients: 'my-patients' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,54 +115,54 @@ export default function DoctorDashboard() {
   };
 
   // Fetch doctor's data
-  const { data: appointments = [] } = useQuery({
+  const { data: appointments = [], error: appointmentsError } = useQuery({
     queryKey: ['doctor-appointments', user?.id],
     queryFn: () => api.get('/appointments', { params: { doctor_id: user.id, status: 'Scheduled' } }).then(r => r.data.appointments || []),
     enabled: !!user?.id,
   });
 
-  const { data: myPatients = [] } = useQuery({
+  const { data: myPatients = [], error: myPatientsError } = useQuery({
     queryKey: ['doctor-patients', user?.id],
-    queryFn: () => api.get('/clinical/doctors/' + user.id + '/patients').then(r => r.data.patients || []).catch(() => []),
+    queryFn: () => api.get('/clinical/doctors/' + user.id + '/patients').then(r => r.data.patients || []),
     enabled: !!user?.id,
   });
 
-  const { data: pendingConsultations = [] } = useQuery({
+  const { data: pendingConsultations = [], error: pendingConsultationsError } = useQuery({
     queryKey: ['pending-consultations', user?.id],
-    queryFn: () => api.get('/clinical/consultations', { params: { doctor_id: user.id, status: 'Draft' } }).then(r => r.data.consultations || []).catch(() => []),
+    queryFn: () => api.get('/clinical/consultations', { params: { doctor_id: user.id, status: 'Draft' } }).then(r => r.data.consultations || []),
     enabled: !!user?.id,
   });
 
-  const { data: pendingLabResults = [] } = useQuery({
+  const { data: pendingLabResults = [], error: pendingLabResultsError } = useQuery({
     queryKey: ['pending-lab-results', user?.id],
-    queryFn: () => api.get('/lab/doctor/' + user.id + '/pending').then(r => r.data.results || []).catch(() => []),
+    queryFn: () => api.get('/lab/doctor/' + user.id + '/pending').then(r => r.data.results || []),
     enabled: !!user?.id,
   });
 
-  const { data: pendingImaging = [] } = useQuery({
+  const { data: pendingImaging = [], error: pendingImagingError } = useQuery({
     queryKey: ['pending-imaging', user?.id],
-    queryFn: () => api.get('/radiology/doctor/' + user.id + '/pending').then(r => r.data.orders || []).catch(() => []),
+    queryFn: () => api.get('/radiology/doctor/' + user.id + '/pending').then(r => r.data.orders || []),
     enabled: !!user?.id,
   });
 
   // Backs the Prescriptions tab: consultations this doctor authored, with the
   // prescriptions attached to each.
-  const { data: myConsultations = [] } = useQuery({
+  const { data: myConsultations = [], error: myConsultationsError } = useQuery({
     queryKey: ['doctor-consultations', user?.id],
     queryFn: () => api.get('/clinical/consultations', { params: { doctor_id: user.id } })
-      .then(r => r.data.consultations || []).catch(() => []),
+      .then(r => r.data.consultations || []),
     enabled: !!user?.id,
   });
 
   // Backs the Referrals tab (requests module: labs/imaging/other requests
   // raised for a patient).
-  const { data: referrals = [] } = useQuery({
+  const { data: referrals = [], error: referralsError } = useQuery({
     queryKey: ['doctor-referrals', user?.id],
-    queryFn: () => api.get('/requests').then(r => r.data.requests || []).catch(() => []),
+    queryFn: () => api.get('/requests').then(r => r.data.requests || []),
     enabled: !!user?.id,
   });
 
-  const { data: notifications = [] } = useQuery({
+  const { data: notifications = [], error: notificationsError } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: () => api.get('/notifications', { params: { unread: true } }).then(r => r.data.notifications || []),
     enabled: !!user?.id,
@@ -176,7 +179,12 @@ export default function DoctorDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* A failed load is shown as a failure. Each of these queries
+          previously ended in .catch(() => []), so a 500 or a 403 rendered
+          as an empty list -- indistinguishable from a clear queue. */}
+      <QueryErrorBanner sections={[{ label: 'My patients', error: myPatientsError }, { label: 'Pending consultations', error: pendingConsultationsError }, { label: 'Pending lab results', error: pendingLabResultsError }, { label: 'Pending imaging', error: pendingImagingError }, { label: 'My consultations', error: myConsultationsError }, { label: 'Referrals', error: referralsError }, { label: 'Appointments', error: appointmentsError }, { label: 'Notifications', error: notificationsError }]}
+        onRetry={() => queryClient.invalidateQueries()} />
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
           <p className="text-gray-600">Dr. {user?.full_name} • {format(new Date(), 'EEEE, MMMM d, yyyy')}</p>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDashboardTab } from '../hooks/useDashboardTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
+import QueryErrorBanner from '../components/QueryErrorBanner';
 import { useAuth } from '../context/AuthContext';
 import {
   Users, Heart, Pill, ClipboardList, AlertTriangle, Clock,
@@ -41,7 +42,7 @@ function NurseNotesTab({ patients }) {
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ['nurse-notes', user?.id],
     queryFn: () => api.get('/ward/nurse/' + user.id + '/tasks')
-      .then(r => r.data.tasks || []).catch(() => []),
+      .then(r => r.data.tasks || []),
     enabled: !!user?.id,
   });
 
@@ -171,37 +172,37 @@ export default function NurseDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch nurse's data
-  const { data: assignedPatients = [] } = useQuery({
+  const { data: assignedPatients = [], error: assignedPatientsError } = useQuery({
     queryKey: ['nurse-patients', user?.id],
-    queryFn: () => api.get('/ward/nurse/' + user.id + '/patients').then(r => r.data.patients || []).catch(() => []),
+    queryFn: () => api.get('/ward/nurse/' + user.id + '/patients').then(r => r.data.patients || []),
     enabled: !!user?.id,
   });
 
-  const { data: vitalSigns = [] } = useQuery({
+  const { data: vitalSigns = [], error: vitalSignsError } = useQuery({
     queryKey: ['vital-signs', user?.id],
-    queryFn: () => api.get('/ward/nurse/' + user.id + '/vitals').then(r => r.data.vitals || []).catch(() => []),
+    queryFn: () => api.get('/ward/nurse/' + user.id + '/vitals').then(r => r.data.vitals || []),
     enabled: !!user?.id,
   });
 
-  const { data: medicationSchedule = [] } = useQuery({
+  const { data: medicationSchedule = [], error: medicationScheduleError } = useQuery({
     queryKey: ['medication-schedule', user?.id],
-    queryFn: () => api.get('/ward/nurse/' + user.id + '/medications').then(r => r.data.medications || []).catch(() => []),
+    queryFn: () => api.get('/ward/nurse/' + user.id + '/medications').then(r => r.data.medications || []),
     enabled: !!user?.id,
   });
 
-  const { data: nursingTasks = [] } = useQuery({
+  const { data: nursingTasks = [], error: nursingTasksError } = useQuery({
     queryKey: ['nursing-tasks', user?.id],
-    queryFn: () => api.get('/ward/nurse/' + user.id + '/tasks').then(r => r.data.tasks || []).catch(() => []),
+    queryFn: () => api.get('/ward/nurse/' + user.id + '/tasks').then(r => r.data.tasks || []),
     enabled: !!user?.id,
   });
 
-  const { data: doctorOrders = [] } = useQuery({
+  const { data: doctorOrders = [], error: doctorOrdersError } = useQuery({
     queryKey: ['doctor-orders', user?.id],
-    queryFn: () => api.get('/ward/nurse/' + user.id + '/orders').then(r => r.data.orders || []).catch(() => []),
+    queryFn: () => api.get('/ward/nurse/' + user.id + '/orders').then(r => r.data.orders || []),
     enabled: !!user?.id,
   });
 
-  const { data: notifications = [] } = useQuery({
+  const { data: notifications = [], error: notificationsError } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: () => api.get('/notifications', { params: { unread: true } }).then(r => r.data.notifications || []),
     enabled: !!user?.id,
@@ -212,7 +213,12 @@ export default function NurseDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* A failed load is shown as a failure. Each of these queries
+          previously ended in .catch(() => []), so a 500 or a 403 rendered
+          as an empty list -- indistinguishable from a clear queue. */}
+      <QueryErrorBanner sections={[{ label: 'Assigned patients', error: assignedPatientsError }, { label: 'Vital signs', error: vitalSignsError }, { label: 'Medication schedule', error: medicationScheduleError }, { label: 'Nursing tasks', error: nursingTasksError }, { label: 'Doctor orders', error: doctorOrdersError }, { label: 'Notifications', error: notificationsError }]}
+        onRetry={() => queryClient.invalidateQueries()} />
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Nurse Dashboard</h1>
           <p className="text-gray-600">{user?.full_name} • {currentShift} • {format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
