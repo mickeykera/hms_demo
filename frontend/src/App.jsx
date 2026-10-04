@@ -6,6 +6,8 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
+import { useIdleLogout } from './hooks/useIdleLogout';
+import { IDLE_TIMEOUT_MS } from './utils/idleSession';
 import './index.css';
 
 // Route components are loaded on demand.
@@ -81,7 +83,14 @@ function ProtectedRoute({ children, allowedRoles }) {
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
+
+  // Idle logout runs here, above the router, so the timer survives navigation
+  // between screens. A nurse reading a results list is not interacting with any
+  // particular page component, and a per-page timer would reset every time they
+  // navigated -- which is exactly when you do not want a session dropped.
+  useIdleLogout(logout, IDLE_TIMEOUT_MS);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
 
   return (
