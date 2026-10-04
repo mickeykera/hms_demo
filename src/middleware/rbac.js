@@ -60,6 +60,44 @@ function getDatabasePermissionsForRole(roleName) {
   return dbPerms;
 }
 
+// Endpoints a flagged account must still be able to reach, or the forced
+// change would be a dead end.
+//
+// This is an allow-list, not a deny-list. Anything added to the API later is
+// blocked for flagged users until someone consciously adds it here, which is
+// the safe direction: a new endpoint that leaks patient data is far worse than
+// a new endpoint a flagged user cannot reach for fifteen minutes.
+const ALLOWED_WHILE_FLAGGED = new Set([
+  '/api/auth/change-password',
+  '/api/auth/login',
+  '/api/config/public',
+  '/api/health',
+]);
+
+/**
+ * Blocks a flagged account from everything except the routes that let it
+ * recover.
+ *
+ * Runs after authenticate(), so req.user is populated and the flag has already
+ * been re-read from the database on this request.
+ */
+export function enforcePasswordChange(req, res, next) {
+  // Not signed in yet -- authenticate() has not run. Nothing to gate.
+  if (!req.user) return next();
+
+  const notFlagged = !req.user.must_change_password;
+  if (notFlagged) return next();
+
+  const path = req.originalUrl.split('?')[0];
+  if (ALLOWED_WHILE_FLAGGED.has(path)) return next();
+
+  return res.status(403).json({
+    error: 'Password change required',
+    code: 'MUST_CHANGE_PASSWORD',
+    message: 'Set a new password before continuing.',
+  });
+}
+
 export function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return res.status(401).json({ error: 'Missing authorization header' });

@@ -37,7 +37,7 @@ import dashboardsRoutes from './modules/dashboards/routes.js';
 import auditRoutes from './modules/audit/routes.js';
 import navigationRoutes from './modules/navigation/routes.js';
 import adminRoutes from './modules/admin/routes.js';
-import { authenticate, authorize, getPermissionsForRole } from './middleware/rbac.js';
+import { authenticate, authorize, enforcePasswordChange, getPermissionsForRole } from './middleware/rbac.js';
 import { validate } from './middleware/validation.js';
 import { errorHandler, notFoundHandler, asyncHandler, AppError } from './middleware/errorHandler.js';
 import { requestLogger, auditLogger } from './middleware/logger.js';
@@ -127,6 +127,21 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(requestLogger);
+
+// Forced password change. Registered here -- after the logger, before every
+// module router -- so a flagged account cannot reach any endpoint at all.
+//
+// It runs its own authenticate() pass to populate req.user and then hands over
+// to enforcePasswordChange. The authorization header is checked first so this
+// costs nothing on unauthenticated traffic: without it, every anonymous
+// request in the system would pay for a JWT verify.
+app.use((req, res, next) => {
+  if (!req.headers.authorization) return next();
+  authenticate(req, res, (err) => {
+    if (err) return next(err);
+    return enforcePasswordChange(req, res, next);
+  });
+});
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
@@ -229,6 +244,9 @@ app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => 
       full_name: user.full_name,
       role: user.role,
       department: user.department,
+      // Sent on the login response so the frontend can force the change screen
+      // without a second round trip to discover the flag.
+      must_change_password: Boolean(user.must_change_password),
       permissions: getPermissionsForRole(user.role),
     },
   });
@@ -450,7 +468,8 @@ app.use('/api/procurement', procurementRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/emergency', emergencyRoutes);
 
-// RBAC & Administration routes
+// Core module routes
+app.use('/api/reception', receptionRoutes);
 app.use('/api/personnel', personnelRoutes);
 app.use('/api/rbac', rbacRoutes);
 app.use('/api/departments', departmentsRoutes);

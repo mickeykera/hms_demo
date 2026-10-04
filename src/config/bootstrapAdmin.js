@@ -129,8 +129,12 @@ export function bootstrapAdmin({ username, password, env = process.env, log = co
 
   const passwordHash = bcrypt.hashSync(resolvedPassword, 10);
 
+  // must_change_password = 1. The bootstrap admin is created from an env var
+  // or typed at a console, so its password has been written down somewhere and
+  // shared over someone's shoulder. Making them replace it themselves before
+  // they can reach the system is the entire point.
   db.prepare(
-    'INSERT INTO users (username, password_hash, full_name, role, department) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO users (username, password_hash, full_name, role, department, must_change_password) VALUES (?, ?, ?, ?, ?, 1)'
   ).run(resolvedUser, passwordHash, 'Initial Administrator', 'SuperAdmin', 'Administration');
 
   // Deliberately logs the username but never the password.
