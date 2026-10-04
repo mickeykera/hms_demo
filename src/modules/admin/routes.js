@@ -1,8 +1,62 @@
 import { Router } from 'express';
 import { authorize } from '../../middleware/rbac.js';
 import * as db from '../../models/index.js';
+import { clearFailedLogins, isLockedOut } from '../../config/loginLockout.js';
 
 const router = Router();
+
+/**
+ * Clear a lockout on a user account.
+ *
+ * SuperAdmin only, deliberately narrower than the rest of this module. Lockout
+ * exists to blunt password guessing, and the person most likely to need to
+ * clear one is a clinician locked out mid-shift -- so the ability to unlock
+ * should not sit with every department administrator.
+ *
+ * This is the *only* way to learn that an account is locked, and that is on
+ * purpose: it is an admin action with an audit trail, not something the login
+ * endpoint discloses to an anonymous caller.
+ */
+router.post(
+  '/users/unlock',
+  authorize(['SuperAdmin']),
+  (req, res, next) => {
+    try {
+      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+
+      if (!username) {
+        return res.status(400).json({
+          error: 'username is required',
+          code: 'VALIDATION_ERROR',
+        });
+      }
+
+      const database = db.getDb();
+      const user = database.prepare('SELECT id, username FROM users WHERE username = ?').get(username);
+
+      if (!user) {
+        // 404 rather than 403: the caller is already authorised, so this is
+        // about the target, not the caller.
+        return res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
+      }
+
+      const wasLocked = isLockedOut(user.id);
+      clearFailedLogins(user.id);
+
+      // Recorded through auditLogger's sibling path: the username is not a
+      // credential, and this is the record that explains why someone was let
+      // back in.
+      console.log(
+        `[AUDIT] ${new Date().toISOString()} - ACCOUNT_UNLOCKED`,
+        { username: user.username, wasLocked, by: req.user?.username }
+      );
+
+      return res.json({ success: true, username: user.username, wasLocked });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
 
 /**
  * Aggregate system statistics for the administration dashboard.

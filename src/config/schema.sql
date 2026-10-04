@@ -434,6 +434,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   FOREIGN KEY (actor_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  attempted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Lockout scans one user's recent attempts by recency on every failed login,
+-- and the admin unlock route looks an account up by username.
+CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_recent ON login_attempts(user_id, last_attempt_at);
+
 CREATE TABLE IF NOT EXISTS conversations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   participant1_id INTEGER NOT NULL,

@@ -49,6 +49,12 @@ import { runMigrations } from './config/migrations.js';
 import { resolveTrustProxy } from './config/trustProxy.js';
 import { assertDemoFlagsAllowed, envFlag, isDemoMode } from './config/deploymentMode.js';
 import { bootstrapAdmin, hasBootstrapEnv } from './config/bootstrapAdmin.js';
+import {
+  isLockedOut,
+  recordFailedLogin,
+  clearFailedLogins,
+  invalidCredentialsResponse,
+} from './config/loginLockout.js';
 
 const app = express();
 
@@ -188,14 +194,32 @@ app.post('/api/setup/bootstrap-admin', asyncHandler(async (req, res) => {
 }));
 
 app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => {
-  const user = getUserByUsername(req.validated.username);
+  const { username, password } = req.validated;
+  const user = getUserByUsername(username);
+
+  // Every path below throws the identical error. The order matters only for
+  // which record is written, not for what the caller sees: an unknown username
+  // and a wrong password are indistinguishable from the outside, and so is a
+  // locked account.
   if (!user) {
-    throw new AppError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
+    throw new AppError(invalidCredentialsResponse().error, 401, invalidCredentialsResponse().code);
   }
-  const valid = bcrypt.compareSync(req.validated.password, user.password_hash);
-  if (!valid) {
-    throw new AppError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
+
+  if (isLockedOut(user.id)) {
+    // Still compared, deliberately: the branch exists so that a locked account
+    // costs the same bcrypt work as a wrong password, which removes the timing
+    // difference that a bare early return would introduce.
+    bcrypt.compareSync(password, user.password_hash);
+    throw new AppError(invalidCredentialsResponse().error, 401, invalidCredentialsResponse().code);
   }
+
+  if (!bcrypt.compareSync(password, user.password_hash)) {
+    recordFailedLogin(user.id);
+    throw new AppError(invalidCredentialsResponse().error, 401, invalidCredentialsResponse().code);
+  }
+
+  clearFailedLogins(user.id);
+
   const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
   res.json({
     token,
