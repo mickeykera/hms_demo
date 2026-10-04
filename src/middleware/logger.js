@@ -5,9 +5,23 @@
 // from happening, so this watches the resolved address and turns silent drift
 // into a visible warning.
 //
-// Only warned once per interval, because the failure is by definition
-// widespread -- warning per request would flood the log exactly when the
-// problem is worst.
+// Diagnostic only, and OFF by default.
+//
+// This is a debugging aid for the public demo, where the proxy chain lives
+// outside our control and can change without notice (Render or Cloudflare
+// alters its topology, and req.ip quietly stops being the browser). It is
+// useless on a hospital LAN: there the proxy is one fixed local address we
+// configure ourselves, so a private req.ip is the expected steady state and
+// warning about it on every boot would just train staff to ignore the log.
+//
+// Enable with PROXY_IP_WARN=true on deployments where the chain is not ours
+// to control. render.yaml sets it.
+function isProxyIpWarningEnabled() {
+  return process.env.PROXY_IP_WARN === 'true';
+}
+
+// Once per interval, because the failure mode is by definition widespread:
+// warning per request would flood the log exactly when the problem is worst.
 const PRIVATE_IP_WARN_INTERVAL_MS = 5 * 60 * 1000;
 let lastPrivateIpWarnAt = 0;
 
@@ -51,6 +65,7 @@ export function isPrivateOrReservedIp(ip) {
 }
 
 function warnOnPrivateIp(ip, requestId) {
+  if (!isProxyIpWarningEnabled()) return;
   if (!isPrivateOrReservedIp(ip)) return;
 
   const now = Date.now();

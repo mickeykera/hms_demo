@@ -16,11 +16,16 @@ RUN npm run build \
  && npm prune --omit=dev \
  && npm prune --prefix frontend --omit=dev
 
+# Deployment-agnostic defaults. Demo conveniences (SEED_DEMO_DATA,
+# DEMO_QUICK_LOGIN) are deliberately NOT baked in here: this image is also the
+# hospital install, and DEPLOYMENT_MODE=onprem refuses to start if either is
+# enabled. Baking the demo into the image meant every on-prem deploy inherited
+# it and refused to boot. render.yaml opts into demo mode explicitly instead.
 ENV NODE_ENV=production \
     PORT=3000 \
     DB_PATH=/data/hospital.db \
     UPLOAD_DIR=/data/uploads/documents \
-    SEED_DEMO_DATA=true
+    DEPLOYMENT_MODE=onprem
 
 RUN mkdir -p /data/uploads/documents && chown -R node:node /app
 

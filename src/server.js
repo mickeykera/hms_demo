@@ -46,33 +46,50 @@ import { getDb, getUserByUsername } from './models/index.js';
 import { swaggerSpec } from './config/swagger.js';
 import { seedDemoData } from './config/seed.js';
 import { runMigrations } from './config/migrations.js';
+import { resolveTrustProxy } from './config/trustProxy.js';
+import { assertDemoFlagsAllowed, envFlag, isDemoMode } from './config/deploymentMode.js';
+import { bootstrapAdmin, hasBootstrapEnv } from './config/bootstrapAdmin.js';
 
 const app = express();
 
-// Render sits behind Cloudflare, so a request crosses two proxies before it
-// reaches this process. Observed on Render:
+// TRUST_PROXY configures how many proxy hops Express may trust when resolving
+// req.ip. It is environment-specific and MUST NOT be hard-coded, because the
+// same image runs in two very different places:
 //
-//   X-Forwarded-For: <client>, 172.71.151.201 (Cloudflare), 10.25.170.135 (Render)
-//   socket remote address: ::1
+//   Render demo (render.yaml sets TRUST_PROXY=3)
+//     Cloudflare -> Render -> app. Observed chain:
+//       X-Forwarded-For: <client>, 172.71.151.201, 10.25.170.135
+//       socket remote address: ::1
+//     Three trusted hops leaves the left-most entry -- the real client -- as
+//     req.ip. With a lower value req.ip resolved to 10.25.170.135, an internal
+//     Render address that also changed between requests from the same browser,
+//     which broke per-client rate limiting and mis-attributed every audit row.
 //
-// Three trusted hops: the socket, then the two entries Render and Cloudflare
-// appended on the right. That leaves the left-most entry -- the real client --
-// as req.ip. With `1` (the previous value) req.ip resolved to 10.25.170.135,
-// an internal Render address, which also changed between requests from the
-// same browser. That broke per-client rate limiting and mis-attributed every
-// audit row to the proxy.
+//   On-prem hospital LAN (TRUST_PROXY unset)
+//     Caddy/nginx -> app, one hop, and the proxy is a fixed local address.
+//     Defaulting to no trusted proxies means req.ip is the TCP peer -- Caddy's
+//     own address. That is safe: X-Forwarded-For from a client is ignored
+//     outright, so nobody can forge an audit identity or mint a fresh
+//     rate-limit bucket by sending the header themselves. The trade-off is
+//     that on-prem rate limiting is per-proxy rather than per-user, which is
+//     the correct default for a single-tenant LAN where the proxy is the only
+//     thing an attacker can reach through.
 //
-// Why a client cannot forge this: X-Forwarded-For is append-only. Each proxy
-// adds the address of the peer it received the request from, on the right. A
-// client's own header can only ever appear on the LEFT of the chain, and
-// `3` reads a fixed offset from the right. Verified: with
-// "9.9.9.9, <real>, <cf>, <render>" req.ip is still the real client, because
-// the forged value shifts the chain without changing the three trusted hops.
-//
-// `4` would be forgeable: the left-most entry becomes attacker-controlled, so
-// anyone could mint a fresh rate-limit bucket per request and write arbitrary
-// addresses into the audit log. Do not raise this without re-probing.
-app.set('trust proxy', 3);
+// A client cannot forge the Render case either. X-Forwarded-For is append-only:
+// each proxy appends the peer it received from, on the right, so a client's own
+// value can only ever appear on the LEFT of the chain. Express reads a fixed
+// offset from the right, so a prepended entry shifts the chain without changing
+// which entries are trusted. Verified: with "9.9.9.9, <real>, <cf>, <render>"
+// at 3 hops req.ip is still the real client. At 4 the left-most entry becomes
+// attacker-controlled and IS forgeable -- do not raise this without re-probing.
+const TRUST_PROXY = resolveTrustProxy(process.env.TRUST_PROXY);
+app.set('trust proxy', TRUST_PROXY.trustProxy);
+
+// Refuse to boot with the demo conveniences enabled outside the demo profile.
+// This runs before anything seeds or serves, so an on-prem install cannot come
+// up with unauthenticated admin access even if the flags leaked in via an env
+// file, a compose override, or an old .env someone kept.
+assertDemoFlagsAllowed();
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'test-secret');
@@ -111,14 +128,63 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'operational', timestamp: new Date().toISOString(), db: getDb().prepare('SELECT 1').get() ? 'connected' : 'error' });
 });
 
-app.post('/api/setup-demo', asyncHandler(async (req, res) => {
+// Demo seeding endpoints. Refused outside the demo profile, not merely
+// discouraged: on a hospital install these would create ten accounts with
+// predictable credentials and hand out admin sessions.
+function assertDemoModeAllowed(req, res, next) {
+  if (!isDemoMode()) {
+    return next(new AppError('Not found', 404, 'NOT_FOUND'));
+  }
+  next();
+}
+
+app.post('/api/setup-demo', assertDemoModeAllowed, asyncHandler(async (req, res) => {
   seedDemoData();
   return res.json({ success: true, message: 'Demo users and beds created' });
 }));
 
-app.get('/api/setup-demo', asyncHandler(async (req, res) => {
+app.get('/api/setup-demo', assertDemoModeAllowed, asyncHandler(async (req, res) => {
   seedDemoData();
   return res.json({ success: true, message: 'Demo users and beds created' });
+}));
+
+// Interactive first-run admin creation, for operators who would rather not put
+// the initial admin password in an env file at all.
+//
+// Safe to expose on a LAN install for exactly one reason: it 409s as soon as
+// any administrator exists, so it can only ever be used on the very first boot
+// (or before the first admin is created). It is not a general "create admin"
+// endpoint and cannot be used to add a second SuperAdmin.
+//
+// Deliberately NOT mounted in the demo profile: the demo already has accounts,
+// and an unauthenticated admin-creation route on a public deployment is not
+// something to leave lying around.
+app.post('/api/setup/bootstrap-admin', asyncHandler(async (req, res) => {
+  if (isDemoMode()) {
+    throw new AppError('Not found', 404, 'NOT_FOUND');
+  }
+
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+  const result = bootstrapAdmin({ username, password });
+
+  if (!result.created) {
+    // 409, not 404: the operator needs to be told the window has closed,
+    // otherwise they will keep retrying a route that silently does nothing.
+    throw new AppError(
+      `Bootstrap already completed: ${result.reason}. Use the existing account, ` +
+        'or create further administrators from the admin UI once signed in.',
+      409,
+      'BOOTSTRAP_ALREADY_DONE'
+    );
+  }
+
+  res.status(201).json({
+    success: true,
+    username: result.username,
+    message: 'Initial administrator created. Sign in and change this password immediately.',
+  });
 }));
 
 app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => {
@@ -163,7 +229,10 @@ app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => 
 // Disabled is the default and is checked per request (not at import time) so
 // tests can toggle it without reimporting the app.
 function isDemoQuickLoginEnabled() {
-  return process.env.DEMO_QUICK_LOGIN === 'true';
+  // Both conditions must hold. The env flag alone is not enough: if an on-prem
+  // install somehow has DEMO_QUICK_LOGIN=true in its environment, this must
+  // still resolve to false rather than hand a session to anyone who asks.
+  return isDemoMode() && envFlag('DEMO_QUICK_LOGIN');
 }
 
 // Fixed allow-list, matching exactly the usernames the demo seeder creates.
@@ -342,7 +411,22 @@ if (!process.env.VITEST) {
   await runMigrations();
 }
 
-if (process.env.SEED_DEMO_DATA === 'true') {
+// First-run admin bootstrap. Runs after migrations so the users table exists,
+// and before the demo seeder so an on-prem install gets its admin either way.
+// Idempotent: a redeploy finds the existing admin and does nothing.
+if (hasBootstrapEnv() || process.env.BOOTSTRAP_ON_STARTUP === 'true') {
+  try {
+    bootstrapAdmin();
+  } catch (err) {
+    // A bad bootstrap password must not take the system down at 3am on a
+    // hospital's first boot -- but it must be impossible to miss either, so
+    // the process exits rather than coming up with no admin and no explanation.
+    console.error(`[BOOTSTRAP] ${err.message}`);
+    throw err;
+  }
+}
+
+if (envFlag('SEED_DEMO_DATA') && isDemoMode()) {
   seedDemoData();
 
   // The base seed above only covers users, departments, roles, wards, beds and
@@ -372,6 +456,25 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Hospital Management System running on port ${PORT}`);
   console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+
+  // Printed on every boot because TRUST_PROXY is now deployment config, not
+  // code. If the proxy chain changes shape, this line is how you notice -- the
+  // wrong value silently breaks per-client rate limiting and audit attribution
+  // without throwing anywhere.
+  console.log(`[CONFIG] deployment mode: ${isDemoMode() ? 'demo' : 'onprem'}`);
+  console.log(`[CONFIG] trust proxy: ${TRUST_PROXY.description} (TRUST_PROXY=${process.env.TRUST_PROXY ?? 'unset'})`);
+  if (TRUST_PROXY.hops === 0 || TRUST_PROXY.hops === false) {
+    console.log('[CONFIG] req.ip resolves to the direct TCP peer; X-Forwarded-For is ignored.');
+  } else if (TRUST_PROXY.trustProxy === true) {
+    console.warn(
+      '[CONFIG] WARNING: TRUST_PROXY=true trusts the entire X-Forwarded-For chain. A client can then ' +
+        'forge req.ip, which lets them evade rate limiting and write arbitrary addresses into the audit log. ' +
+        'Prefer an exact hop count.'
+    );
+  }
+  if (isDemoMode()) {
+    console.warn('[CONFIG] DEMO MODE: demo accounts and quick-login are available. Never use on real patient data.');
+  }
 });
 
 export default app;

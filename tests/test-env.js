@@ -18,3 +18,23 @@ const worker = process.env.VITEST_POOL_ID || process.env.VITEST_WORKER_ID || 'ma
 const testDbPath = join(__dirname, '..', `test-hospital-${worker}.db`);
 process.env.DB_PATH = testDbPath;
 process.env.JWT_SECRET = 'test-secret';
+
+// The suite exercises demo behaviour (seeded accounts, one-click login), and
+// those features are now gated behind DEPLOYMENT_MODE=demo. Without this the
+// demo tests would correctly 404 and the guard tests would have to re-import
+// the whole app to flip the mode.
+//
+// This mirrors what render.yaml sets for the public demo. The onprem refusals
+// are covered separately in tests/deployment.test.js against the pure config
+// functions, which is where that logic actually lives.
+process.env.DEPLOYMENT_MODE = 'demo';
+
+// TRUST_PROXY=3 mirrors the Render chain so the forwarded-IP tests keep
+// modelling the real deployment. The "no trusted proxies" default is covered in
+// tests/deployment.test.js, which builds a small app rather than re-importing
+// this one.
+process.env.TRUST_PROXY = '3';
+
+// The [PROXY-IP] drift warning is off by default; the logger tests assert that
+// default is respected, and enable it explicitly per case where needed.
+process.env.PROXY_IP_WARN = 'true';

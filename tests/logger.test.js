@@ -37,11 +37,53 @@ describe('Proxy IP drift guard', () => {
     vi.setSystemTime(new Date('2026-10-04T12:00:00Z'));
     warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // Off by default; the cases below that expect a warning turn it on.
+    // There is a dedicated test for the default.
+    process.env.PROXY_IP_WARN = 'true';
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    delete process.env.PROXY_IP_WARN;
+  });
+
+  describe('opt-in gate', () => {
+    it('should stay silent when PROXY_IP_WARN is unset', async () => {
+      // The hospital-LAN default: one fixed proxy address means a private
+      // req.ip is expected, and warning about it every boot would just train
+      // staff to ignore the log.
+      delete process.env.PROXY_IP_WARN;
+      const logger = await loadLogger();
+
+      runRequest(logger, '10.25.170.135');
+      runRequest(logger, '127.0.0.1');
+
+      expect(warn).not.toHaveBeenCalled();
+      // Crucially, the audit log still fires. The gate silences the diagnostic,
+      // it does not silence auditing.
+      expect(log).toHaveBeenCalledTimes(2);
+    });
+
+    it('should stay silent when set to anything but "true"', async () => {
+      const logger = await loadLogger();
+
+      for (const value of ['false', '1', 'yes', 'TRUE']) {
+        process.env.PROXY_IP_WARN = value;
+        runRequest(logger, '10.25.170.135');
+      }
+
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('should still call next when disabled', async () => {
+      delete process.env.PROXY_IP_WARN;
+      const logger = await loadLogger();
+
+      const next = runRequest(logger, '10.25.170.135');
+
+      expect(next).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('isPrivateOrReservedIp', () => {

@@ -14,6 +14,8 @@ services:
     plan: free
     healthCheckPath: /api/health
     envVars:
+      - key: DEPLOYMENT_MODE
+        value: demo
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -22,6 +24,19 @@ services:
         value: /data/hospital.db
       - key: UPLOAD_DIR
         value: /data/uploads/documents
+      # Cloudflare -> Render -> app, two proxy hops in front of the socket.
+      # Without this every visitor resolves to the same internal address and
+      # they all share one rate-limit bucket. This is the value that makes the
+      # demo's per-client limiting work; see docs/deployment-onprem.md for why
+      # an on-prem install leaves it unset.
+      - key: TRUST_PROXY
+        value: "3"
+      # The proxy chain here belongs to Render and Cloudflare and can change
+      # without warning, so the drift warning is worth having here. It is off
+      # by default because it is noise on a hospital LAN, where the proxy is a
+      # single address we configure ourselves.
+      - key: PROXY_IP_WARN
+        value: "true"
       - key: SEED_DEMO_DATA
         value: "true"
       - key: JWT_SECRET
