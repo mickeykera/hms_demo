@@ -321,16 +321,18 @@ describe('API Integration Tests', () => {
       }
       expect(sawLimit).toBe(true);
     });
-    it('should rate limit per forwarded client IP, not the shared socket', async () => {
+    it('should resolve the real client from the three-hop Render chain', async () => {
       process.env.DEMO_QUICK_LOGIN = 'true';
 
-      // Exhaust one client IP's bucket by spoofing nothing -- just a single
-      // forwarded address standing in for "the real browser".
+      // The exact chain observed on Render: client, Cloudflare, Render.
+      const chain = '196.189.144.13, 172.71.151.201, 10.25.170.135';
+
+      // Burn the real client's bucket, which is what Express must key on.
       let sawLimit = false;
       for (let i = 0; i < 30; i += 1) {
         const res = await request(app)
           .post('/api/auth/demo-login')
-          .set('X-Forwarded-For', '203.0.113.10')
+          .set('X-Forwarded-For', chain)
           .send({ username: 'nurse' });
         if (res.status === 429) {
           sawLimit = true;
@@ -339,54 +341,67 @@ describe('API Integration Tests', () => {
       }
       expect(sawLimit).toBe(true);
 
-      // A different client IP must have its own bucket. Without `trust proxy`,
-      // every one of these shared the socket address and this would also 429 --
-      // which is the bug: one abusive visitor throttles the entire site.
+      // Same client, different Cloudflare edge node (Cloudflare rotates these
+      // per connection). The limiter must still see the same person, otherwise
+      // the limit resets constantly for real users.
+      const rotated = await request(app)
+        .post('/api/auth/demo-login')
+        .set('X-Forwarded-For', '196.189.144.13, 104.16.132.229, 10.25.170.135')
+        .send({ username: 'nurse' });
+      expect(rotated.status).toBe(429);
+
+      // A genuinely different client gets its own bucket.
       const other = await request(app)
         .post('/api/auth/demo-login')
-        .set('X-Forwarded-For', '203.0.113.99')
+        .set('X-Forwarded-For', '198.51.100.42, 172.71.151.201, 10.25.170.135')
         .send({ username: 'nurse' });
       expect(other.status).toBe(200);
       expect(other.body.token).toBeTruthy();
     });
 
-    it('should use the proxy-appended address, not a client-supplied one', async () => {
+    it('should ignore a client-prepended forged address in the chain', async () => {
       process.env.DEMO_QUICK_LOGIN = 'true';
 
-      // Simulates what Render actually sends: a client-supplied value that the
-      // proxy appended its own address to. With `trust proxy = 1` Express reads
-      // the right-most (proxy-appended) entry. If it read the left-most value
-      // instead, a client could mint a fresh rate-limit bucket per request by
-      // sending its own X-Forwarded-For and defeat the limiter entirely.
+      // X-Forwarded-For is append-only, so anything a client sends lands on the
+      // LEFT. With `trust proxy = 3` that shifts the chain but must not change
+      // which address is trusted.
+      const forged = '9.9.9.9, 198.51.100.77, 172.71.151.201, 10.25.170.135';
       const res = await request(app)
         .post('/api/auth/demo-login')
-        .set('X-Forwarded-For', '1.2.3.4, 198.51.100.7')
+        .set('X-Forwarded-For', forged)
         .send({ username: 'nurse' });
-
       expect(res.status).toBe(200);
 
-      // Burn 198.51.100.7's bucket -- the address Express should have keyed on.
+      // The trusted address is the one Render and Cloudflare appended -- the
+      // 3rd entry from the right -- so exhausting it must also throttle the
+      // same forged request. If the client's left-most value were trusted, a
+      // new forged header per request would mint a fresh bucket every time.
       let sawLimit = false;
       for (let i = 0; i < 30; i += 1) {
         const again = await request(app)
           .post('/api/auth/demo-login')
-          .set('X-Forwarded-For', '1.2.3.4, 198.51.100.7')
+          .set('X-Forwarded-For', '9.9.9.9, 198.51.100.77, 172.71.151.201, 10.25.170.135')
           .send({ username: 'nurse' });
         if (again.status === 429) {
           sawLimit = true;
           break;
         }
       }
-      // The proxy-appended address is what got limited, proving the client-
-      // supplied left-hand value was ignored.
       expect(sawLimit).toBe(true);
 
-      // A different appended address is unaffected.
-      const other = await request(app)
+      // A different forged header reusing the same real client stays limited.
+      const otherForge = await request(app)
         .post('/api/auth/demo-login')
-        .set('X-Forwarded-For', '1.2.3.4, 198.51.100.8')
+        .set('X-Forwarded-For', '8.8.8.8, 198.51.100.77, 172.71.151.201, 10.25.170.135')
         .send({ username: 'nurse' });
-      expect(other.status).toBe(200);
+      expect(otherForge.status).toBe(429);
+
+      // Whereas a different real client behind the same proxies is not.
+      const different = await request(app)
+        .post('/api/auth/demo-login')
+        .set('X-Forwarded-For', '9.9.9.9, 198.51.100.88, 172.71.151.201, 10.25.170.135')
+        .send({ username: 'nurse' });
+      expect(different.status).toBe(200);
     });
   });
 

@@ -49,24 +49,30 @@ import { runMigrations } from './config/migrations.js';
 
 const app = express();
 
-// Render terminates TLS and forwards the request, so the socket address is
-// Render's proxy -- not the browser. Without this, req.ip is the proxy for
-// every single visitor.
+// Render sits behind Cloudflare, so a request crosses two proxies before it
+// reaches this process. Observed on Render:
 //
-// `1` means "trust exactly one hop": Express reads X-Forwarded-For and takes
-// the address the proxy appended (the right-most untrusted entry), which is the
-// real client. It deliberately does NOT trust the left-most value, so a client
-// that sends its own X-Forwarded-For: 1.2.3.4 cannot spoof the identity -- the
-// proxy overwrites/appends, and only the hop we explicitly delegate to is read.
+//   X-Forwarded-For: <client>, 172.71.151.201 (Cloudflare), 10.25.170.135 (Render)
+//   socket remote address: ::1
 //
-// This matters beyond rate limiting: req.ip is also written to audit logs by
-// clinical, lab, appointments, pharmacy, radiology, requests, documents, wards,
-// procurement and emergency, plus the request logger. Without this, every one of
-// those records the proxy address instead of the person who acted.
+// Three trusted hops: the socket, then the two entries Render and Cloudflare
+// appended on the right. That leaves the left-most entry -- the real client --
+// as req.ip. With `1` (the previous value) req.ip resolved to 10.25.170.135,
+// an internal Render address, which also changed between requests from the
+// same browser. That broke per-client rate limiting and mis-attributed every
+// audit row to the proxy.
 //
-// Set to 1, never `true`: `true` would trust the entire chain and hand any
-// client full control of req.ip.
-app.set('trust proxy', 1);
+// Why a client cannot forge this: X-Forwarded-For is append-only. Each proxy
+// adds the address of the peer it received the request from, on the right. A
+// client's own header can only ever appear on the LEFT of the chain, and
+// `3` reads a fixed offset from the right. Verified: with
+// "9.9.9.9, <real>, <cf>, <render>" req.ip is still the real client, because
+// the forged value shifts the chain without changing the three trusted hops.
+//
+// `4` would be forgeable: the left-most entry becomes attacker-controlled, so
+// anyone could mint a fresh rate-limit bucket per request and write arbitrary
+// addresses into the audit log. Do not raise this without re-probing.
+app.set('trust proxy', 3);
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'test-secret');
