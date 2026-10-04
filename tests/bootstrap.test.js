@@ -68,6 +68,7 @@ describe('Database bootstrap', () => {
         '20260912_appointments_pharmacy',
         '20261001_consultation_soap',
         '20261002_operational_modules',
+        '20261003_must_change_password',
       ]);
     } finally {
       db.close();

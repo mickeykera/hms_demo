@@ -79,6 +79,11 @@ CREATE TABLE IF NOT EXISTS users (
   patient_id INTEGER,
   personnel_id INTEGER,
   active BOOLEAN DEFAULT 1,
+  -- 1 = this account must set its own password before it can do anything else.
+  -- Defaults to 0 so installing this upgrade does not lock out every existing
+  -- user on an upgraded hospital install; only the bootstrap and admin-reset
+  -- paths set it to 1.
+  must_change_password BOOLEAN DEFAULT 0,
   last_login DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

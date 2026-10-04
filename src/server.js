@@ -40,7 +40,7 @@ import adminRoutes from './modules/admin/routes.js';
 import { authenticate, authorize, getPermissionsForRole } from './middleware/rbac.js';
 import { validate } from './middleware/validation.js';
 import { errorHandler, notFoundHandler, asyncHandler, AppError } from './middleware/errorHandler.js';
-import { requestLogger } from './middleware/logger.js';
+import { requestLogger, auditLogger } from './middleware/logger.js';
 import { logResourceAction } from './middleware/auditLog.js';
 import { getDb, getUserByUsername } from './models/index.js';
 import { swaggerSpec } from './config/swagger.js';
@@ -208,6 +208,51 @@ app.post('/api/auth/login', validate('login'), asyncHandler(async (req, res) => 
       permissions: getPermissionsForRole(user.role),
     },
   });
+}));
+
+// Self-service password change.
+//
+// The system previously had no way for a user to change their own password at
+// all, which made forced-change and lockout policy impossible: an admin could
+// reset a password but the user could not rotate one. This is the primitive
+// both of those features are built on.
+//
+// The current password must be supplied even when the caller is already
+// authenticated: a stolen token should not be enough to take over the account
+// permanently.
+app.post('/api/auth/change-password', authenticate, validate('passwordChange'), asyncHandler(async (req, res) => {
+  const db = getDb();
+  const user = db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(req.user.id);
+
+  if (!user) {
+    throw new AppError('User not found or inactive', 401, 'UNAUTHORIZED');
+  }
+
+  // Verify the current password. Same 401 and same wording as a wrong login, so
+  // this endpoint reveals nothing about the account beyond what login already
+  // does.
+  if (!bcrypt.compareSync(req.validated.currentPassword, user.password_hash)) {
+    throw new AppError('Current password is incorrect', 401, 'INVALID_CREDENTIALS');
+  }
+
+  const newPassword = req.validated.newPassword;
+
+  // Reuse the same "password must not be the username" rule as the bootstrap,
+  // so an account cannot be created under one policy and changed to another.
+  if (newPassword.toLowerCase() === user.username.toLowerCase()) {
+    throw new AppError('New password must not be your username', 400, 'WEAK_PASSWORD');
+  }
+
+  db.prepare(
+    'UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  ).run(bcrypt.hashSync(newPassword, 10), user.id);
+
+  // Deliberately records the fact of the change, never the password. Details go
+  // through sanitizeBody, but this passes an explicit string so there is no
+  // request body involved at all.
+  auditLogger('PASSWORD_CHANGED', { userId: user.id, username: user.username });
+
+  res.json({ success: true, message: 'Password changed.' });
 }));
 
 // Demo quick-login.

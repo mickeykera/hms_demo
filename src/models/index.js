@@ -95,6 +95,17 @@ function getOrCreateDb() {
     db.exec('CREATE INDEX IF NOT EXISTS idx_users_personnel ON users(personnel_id)');
   }
 
+  // must_change_password drives the forced-password-change gate. Applied here
+  // as well as in migration 20261003 because the test harness builds its schema
+  // from schema.sql and never runs migrations, and because an existing database
+  // opened directly (not via `npm run migrate`) would otherwise fail on every
+  // query touching the column.
+  if (!userColumns.includes('must_change_password')) {
+    // DEFAULT 0, not a forced backfill: upgrading must not sign every
+    // existing hospital user out until they choose a new password.
+    db.exec('ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT 0');
+  }
+
   // SOAP charting columns for databases predating the consultation migration.
   applyColumnBackfills(db);
   

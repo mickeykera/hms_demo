@@ -269,6 +269,20 @@ export const schemas = {
     password: z.string().min(1, 'Password is required'),
   }),
 
+  // Self-service password change. 12 characters minimum, matching the
+  // first-run bootstrap in src/config/bootstrapAdmin.js so an account cannot be
+  // created with one policy and changed to another.
+  passwordChange: z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z
+      .string()
+      .min(12, 'New password must be at least 12 characters')
+      .max(200, 'New password is too long'),
+  }).refine((d) => d.newPassword !== d.currentPassword, {
+    path: ['newPassword'],
+    message: 'New password must differ from the current one',
+  }),
+
   appointment: z.object({
     patient_id: z.coerce.number().int().positive(),
     doctor_id: z.coerce.number().int().positive(),

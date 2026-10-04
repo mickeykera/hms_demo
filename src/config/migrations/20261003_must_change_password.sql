@@ -1,0 +1,22 @@
+-- Migration: forced password change on first login
+-- Created: 2026-10-04
+--
+-- must_change_password means: 1 = this account must set its own password
+-- before it can be used for anything else. It is set by the first-run
+-- bootstrap and by an admin password reset, never by a self-service change.
+--
+-- SQLite has no ADD COLUMN IF NOT EXISTS, so an idempotent column addition
+-- cannot be expressed in .sql. This is the same trap 20261001 documents: the
+-- column is declared in schema.sql and added to pre-existing databases by the
+-- backfill in src/models/index.js, and `npm run migrate` only ever runs against
+-- a database the app has already opened -- so an ALTER TABLE here would always
+-- fail with "duplicate column name" and abort the whole runner, which is
+-- exactly the bug that once stopped 20261002 from ever applying.
+--
+-- DEFAULT 0 is deliberate. Existing rows pick up 0, so upgrading a live
+-- hospital install does not lock out every current user until they have chosen
+-- a new password.
+
+-- No statements required for this migration. The version marker below records
+-- that it has been applied; the column itself is owned by schema.sql.
+SELECT 1;
