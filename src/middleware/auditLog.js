@@ -1,4 +1,12 @@
 import { getDb, createAuditLog } from '../models/index.js';
+import { sanitizeBody } from './logger.js';
+
+// Both audit sinks below serialise the request body into audit_logs.details,
+// which is a database row that outlives the request and is readable by anyone
+// with audit access. Without redaction a password sent to a logged route would
+// be persisted in cleartext -- so the same sanitizer the request logger uses
+// applies here. Previously the body was stored raw, which meant this column
+// could hold credentials if any route was ever wired to it with one.
 
 export function auditLog(action, resourceType, resourceId = null, details = null) {
   return (req, res, next) => {
@@ -12,7 +20,7 @@ export function auditLog(action, resourceType, resourceId = null, details = null
             action,
             resource_type: resourceType,
             resource_id: resourceId,
-            details: details || (req.body ? JSON.stringify(req.body) : null),
+            details: details || (req.body ? JSON.stringify(sanitizeBody(req.body)) : null),
             ip_address: req.ip || req.connection?.remoteAddress,
           });
         } catch (e) {
@@ -36,7 +44,7 @@ export function logResourceAction(action, resourceType) {
             action,
             resource_type: resourceType,
             resource_id: resourceId,
-            details: req.body ? JSON.stringify(req.body) : null,
+            details: req.body ? JSON.stringify(sanitizeBody(req.body)) : null,
             ip_address: req.ip || req.connection?.remoteAddress,
           });
         } catch (e) {

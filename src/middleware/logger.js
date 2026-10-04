@@ -117,14 +117,71 @@ export function requestLogger(req, res, next) {
   next();
 }
 
-function sanitizeBody(body) {
+// Credential redaction.
+//
+// Substring matching on a normalised key, rather than an exact-name list,
+// because a codebase mixes casing freely: password / Password / password_hash,
+// api_key / apiKey / api-key / API_KEY all mean the same thing. An exact list
+// silently misses every variant it did not enumerate -- which is how a
+// camelCase secret ends up in a log file for the life of the install.
+//
+// Keys are normalised by lowercasing and dropping "_" and "-", so all of the
+// above collapse to "password" / "apikey" and match.
+const SENSITIVE_KEY_SUBSTRINGS = [
+  'password',
+  'token',
+  'secret',
+  'apikey',
+  'authorization',
+  'credential',
+];
+
+const REDACTED = '[REDACTED]';
+const TRUNCATED = '[TRUNCATED]';
+
+// Bounds the walk so a pathologically nested body cannot stall a request or
+// blow the stack.
+//
+// At the cap the subtree is REPLACED rather than passed through. Returning the
+// deep value verbatim would mean anything past the cap leaks again, which
+// defeats the point -- so beyond the cap the content is dropped. Real request
+// bodies are rarely deeper than this, and losing the tail of an absurd one is a
+// fair price for a guarantee that holds at any depth.
+const MAX_DEPTH = 6;
+
+function isSensitiveKey(key) {
+  const normalised = String(key).toLowerCase().replace(/[_-]/g, '');
+  return SENSITIVE_KEY_SUBSTRINGS.some((needle) => normalised.includes(needle));
+}
+
+// Only plain objects and arrays are walked. A Date, Buffer, or a class instance
+// would otherwise be rebuilt as a bare {} and lose its behaviour in the log.
+function isWalkable(value) {
+  if (Array.isArray(value)) return true;
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
+ * Returns a redacted COPY of `body`. The original is never mutated: the route
+ * handler still has to read the real values, and sanitising in place would hand
+ * it [REDACTED] instead.
+ */
+export function sanitizeBody(body, depth = 0) {
   if (!body || typeof body !== 'object') return body;
-  const sanitized = { ...body };
-  const sensitiveFields = ['password', 'password_hash', 'token', 'authorization', 'secret', 'api_key'];
-  for (const field of sensitiveFields) {
-    if (sanitized[field]) {
-      sanitized[field] = '[REDACTED]';
-    }
+  if (!isWalkable(body)) return body;
+  if (depth >= MAX_DEPTH) return Array.isArray(body) ? [TRUNCATED] : TRUNCATED;
+
+  if (Array.isArray(body)) {
+    return body.map((item) => sanitizeBody(item, depth + 1));
+  }
+
+  const sanitized = {};
+  for (const [key, value] of Object.entries(body)) {
+    // A sensitive key is redacted wholesale, including when its value is an
+    // object: { credentials: { password } } needs no further inspection.
+    sanitized[key] = isSensitiveKey(key) ? REDACTED : sanitizeBody(value, depth + 1);
   }
   return sanitized;
 }
