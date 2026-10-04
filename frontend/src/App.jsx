@@ -46,6 +46,9 @@ const Reception = lazy(() => import('./pages/Reception'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Ward = lazy(() => import('./pages/Ward'));
 
+// Forced password change, and voluntary change from Settings.
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+
 // Shown while a route chunk is in flight.
 function RouteFallback() {
   return (
@@ -75,6 +78,15 @@ function ProtectedRoute({ children, allowedRoles }) {
   const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
   if (!user) return <Navigate to="/login" />;
+
+  // Forced password change. Checked before the role gate so a flagged account
+  // lands here regardless of its role, and checked against the current path so
+  // the change screen itself is reachable. The API independently blocks every
+  // other endpoint, so this is a courtesy redirect rather than the boundary.
+  if (user.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (allowedRoles && !hasAnyRole(...allowedRoles)) return <Navigate to={getWorkspacePath(user.role)} replace />;
   // Wrap every protected page so a render crash shows a recoverable error
   // screen instead of a blank page, and always offers a route back to login.
@@ -245,6 +257,11 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
+
+      {/* Deliberately OUTSIDE the guarded Layout group: a flagged account is
+          redirected here before the layout mounts, and the layout pulls the
+          notifications and navigation the API would reject anyway. */}
+      <Route element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} path="/change-password" />
       
       {/* Module routes accessible by multiple roles.
           These previously rendered "Coming Soon" placeholders even though the

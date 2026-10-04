@@ -130,6 +130,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Called after a successful forced password change. The API has already
+  // cleared must_change_password; this keeps the cached copy in step so the
+  // route gate stops redirecting, without requiring a fresh sign-in.
+  const markPasswordChanged = () => {
+    if (!user) return;
+    const updated = { ...user, must_change_password: false };
+    localStorage.setItem('user', JSON.stringify(updated));
+    setUser(updated);
+  };
+
   const hasRole = (...roles) => user && roles.includes(user.role);
   const hasAnyRole = (...roles) => user && roles.some(r => user.role === r);
   const canAccess = (module) => user?.permissions?.includes(module) || false;
@@ -143,6 +153,7 @@ export function AuthProvider({ children }) {
       demoLogin,
       logout, 
       hasRole, 
+      markPasswordChanged,
       hasAnyRole,
       canAccess, 
       hasPermission,

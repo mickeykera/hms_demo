@@ -31,6 +31,11 @@ export const authService = {
   // token for an allow-listed demo username, and 404s unless the server has
   // DEMO_QUICK_LOGIN=true. Returns the same { token, user } shape as login().
   demoLogin: (username) => api.post('/auth/demo-login', { username }),
+  // Self-service password change. Requires the current password even though
+  // the caller is already authenticated -- a stolen token should not be enough
+  // to take over the account permanently.
+  changePassword: (currentPassword, newPassword) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
 export const configService = {

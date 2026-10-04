@@ -107,36 +107,58 @@ guarantee enforced by the middleware.
 *What you still need:* a retention period set by your compliance officer, a
 mechanism to enforce it, and somewhere tamper-evident to keep audit records.
 
-### Session timeout — absent
+### Session timeout — partially closed
 
-Tokens are issued with `expiresIn: '8h'` (`src/server.js:199`, `:326`) and
-there is **no idle timeout, no absolute session limit, and no server-side
-revocation**.
+Tokens carry `expiresIn: '8h'` (`src/server.js`). An **idle** timeout of 15
+minutes now signs the user out of the browser (`frontend/src/utils/idleSession.js`),
+which covers the realistic ward risk: a clinician who walks away from a shared
+workstation.
 
-There is no token blacklist or revocation store. Concretely:
+What is still absent, and it is the more serious half:
 
-- A token remains valid for 8 hours regardless of activity, including on a
-  shared clinical workstation left unattended. There is no idle timeout, so a
-  session that has been untouched for 7 hours 50 minutes is still live.
-- Signing out client-side does not revoke anything server-side; the token
-  stays valid until it expires. Nothing records that a token was issued, so
-  there is nothing to invalidate individually.
-- There is no forced logout for a compromised or departed account short of
-  rotating `JWT_SECRET`, which invalidates *every* session for *all* users.
+- **The token is not invalidated server-side.** The idle timer is client-side
+  only, so a stolen token remains valid until its 8h expiry.
+- **Closing a laptop lid without signing out leaves a still-authenticated
+  browser.** A restored tab keeps its token in `localStorage`.
+- **No absolute session limit** independent of the token's fixed expiry.
 
-**One thing that does work:** `authenticate()` re-reads the user row on every
-request and requires `active = 1` (`src/middleware/rbac.js:73`). Setting
-`users.active = 0` therefore revokes that account's tokens on the very next
-request, without waiting for expiry and without a logout list. This is the
-practical lever for offboarding a user — prefer deactivating the account over
-rotating `JWT_SECRET`.
+Server-side idle enforcement (short-lived activity claim, re-issued on
+activity) is the remaining work and was deliberately deferred: it changes what
+the auth middleware trusts and how long tokens live, which warrants its own
+review rather than being folded into a timeout ticket.
+
+### Login lockout — present
+
+Five consecutive failures locks an account for fifteen minutes, persisted in
+`login_attempts` (`src/config/loginLockout.js`). An in-memory counter would be
+cleared by a restart, which on Render's free tier is routine.
+
+The lockout response is byte-identical to a wrong password. That is deliberate:
+lockout is a denial-of-service vector, and anyone who knows a colleague's
+username could otherwise lock them out of a clinical system at will. A
+SuperAdmin-only route clears a lock.
+
+Not covered: no lockout by IP for a nonexistent username, so username
+guessing is bounded per-account but not globally.
+
+### Forced password change — present
+
+`must_change_password` blocks every endpoint except four allow-listed routes
+(`src/middleware/rbac.js`). Set on first-run bootstrap and on admin reset;
+defaults to 0 so upgrading a live install does not lock out existing users.
+
+A user can now change their own password (`POST /api/auth/change-password`),
+which did not exist before — the feature was unimplementable without it.
+
+Not covered: no password expiry for accounts created through the UI, and no
+password policy applied to accounts created after the bootstrap admin.
 
 ### Other gaps worth knowing
 
 | Gap | Detail |
 |---|---|
 | No MFA / second factor | Single password per account. |
-| No brute-force lockout | Rate limiting exists on the demo-login endpoint, not on `/api/auth/login`. |
+| No global brute-force bound | Per-account lockout exists; there is no IP-level throttle on `/api/auth/login`, so username enumeration across many accounts is not bounded globally. |
 | No password expiry or complexity policy for users | Only the bootstrap admin is validated; accounts created later are not subject to the same rules. |
 | No CSRF protection | The API is JWT-in-header rather than cookie-based, which limits the exposure, but there is no explicit CSRF token. |
 | No file-upload content validation | Documents are stored under `UPLOAD_DIR`; treat that volume as untrusted input. |
