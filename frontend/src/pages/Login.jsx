@@ -101,7 +101,16 @@ export default function Login() {
           </p>
           <div className="flex space-x-4 text-blue-200 text-sm">
             <Shield className="w-5 h-5" />
-            <span>HIPAA Compliant • Secure • Real-time</span>
+            {/* Was "HIPAA Compliant • Secure • Real-time".
+                No software can certify its own HIPAA compliance -- that is an
+                organizational outcome covering risk analysis, policies, staff
+                training, access control and incident response, none of which
+                this codebase establishes. Asserting it on the login screen of a
+                product sold to hospitals is a claim a hospital's compliance
+                officer would rightly challenge, so it has been replaced with
+                facts we can actually stand behind. See the Security and
+                Compliance Notes section of the README. */}
+            <span>Role-based access • Audit logged • Real-time</span>
           </div>
         </div>
         <div className="flex items-center gap-4 text-blue-200 text-sm">
