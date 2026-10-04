@@ -1,0 +1,96 @@
+# On-premise deployment for a hospital LAN.
+#
+# Two containers:
+#   caddy  terminates TLS on :443 and proxies to the app on the internal network
+#   app    Node/Express, listening on :3000, NOT published to the host
+#
+# The app port is deliberately not exposed to the LAN. The only way in is
+# through Caddy, so TLS termination and any header handling happen in exactly
+# one place.
+#
+# Copy .env.example to .env and edit it before the first `docker compose up`.
+
+name: hms-onprem
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Hospital install. Not "demo": that would enable quick-login and the
+      # demo seeder, and the server refuses to start if they are also set.
+      DEPLOYMENT_MODE: onprem
+      NODE_ENV: production
+      PORT: 3000
+      DB_PATH: /data/hospital.db
+      UPLOAD_DIR: /data/uploads/documents
+      # Set by the operator in .env. Never commit it.
+      # Quoted: the ":?" in the shell-style default is not valid unquoted YAML.
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env, e.g. openssl rand -hex 32}"
+      # The app is reached only from Caddy over the internal compose network.
+      # Leaving TRUST_PROXY unset means X-Forwarded-For is ignored, so a client
+      # on the LAN cannot forge an audit identity or evade rate limiting by
+      # setting the header themselves.
+      #
+      # If you later put a second proxy in front of Caddy, count it here. See
+      # docs/deployment-onprem.md.
+      # TRUST_PROXY: 1
+      # First-run admin. Remove both after the first successful boot; the
+      # account is only created when no administrator exists.
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    volumes:
+      # The SQLite database and uploaded documents. This is the only thing
+      # worth backing up -- see docs/deployment-onprem.md.
+      - hms-data:/data
+    # No "ports:" on purpose. The app is reachable only from caddy.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # Set to the hospital's hostname, e.g. hms.hospital.internal.
+      # See docs/deployment-onprem.md for certificates.
+      HMS_HOST: ${HMS_HOST:-hms.hospital.internal}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Caddy stores certificates and ACME state here. Back this up too if you
+      # want to avoid re-issuing on restore.
+      - caddy-data:/data
+      - caddy-config:/config
+      # Optional: your hospital's internal CA root and leaf certificate. Only
+      # needed for the internal-CA option in the Caddyfile. Create the
+      # directory first (git cannot track empty dirs); see
+      # docs/deployment-onprem.md.
+      - ./deploy/certs:/certs:ro
+    networks:
+      - internal
+
+volumes:
+  hms-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,95 @@
+# Reverse proxy for the on-prem deployment. See docs/deployment-onprem.md for
+# how to obtain a certificate for a hospital LAN.
+#
+# Three ways to get TLS, in order of preference:
+#
+#   1. Internal CA   (recommended) your hospital IT already runs one. Every
+#                    workstation trusts it, so no browser warnings anywhere.
+#                    Set CADDY_TLS_CA=<path to your CA root PEM> -- see below.
+#
+#   2. Self-signed   quick to stand up, but every browser will warn until the
+#                    certificate is manually trusted on each machine. Fine for
+#                    evaluation, tedious for a 500-bed hospital.
+#
+#   3. Plain HTTP    only for an isolated network segment during install. Real
+#                    patient data should never travel unencrypted, not even on
+#                    a LAN -- VLANs are misconfigured.
+#
+# Note that a PUBLIC CA (Let's Encrypt, DigiCert) will NOT issue a certificate
+# for a raw IP address or an .internal/.local hostname. Their issuance
+# requirements mandate a publicly resolvable DNS name, and validation requires
+# reaching the internet. A hospital LAN normally has neither. Use an internal
+# CA (option 1) instead.
+
+{
+	# admin off: no management API listening on localhost:2019
+	admin off
+	# Order of TLS trust sources. An internal CA is mounted at
+	# /certs/ca and listed here so Caddy trusts it when talking to upstreams.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$HMS_HOST:hms.hospital.internal} {
+	# ---------------------------------------------------------------------------
+	# TLS
+	# ---------------------------------------------------------------------------
+	# Uncomment ONE tls directive. They are mutually exclusive.
+
+	# (1) Internal CA. Requires your CA root at ./deploy/certs/ca.pem on the host
+	#     and a leaf certificate+key for this host. Fastest on a LAN, and the only
+	#     option that produces zero browser warnings across a whole hospital.
+	# tls /certs/hms.pem /certs/hms.key
+
+	# (2) Self-signed. Caddy generates it on first boot. Every workstation must
+	#     trust it manually (Settings > Privacy > Certificates on Chrome, or
+	#     import the CA on Windows). Good enough to evaluate; painful at scale.
+	# tls internal
+
+	# (3) Plain HTTP on a trusted segment. Installation and commissioning only.
+	#
+	# (4) Uncomment for a PUBLIC hostname with a public CA, e.g. a DNS name that
+	#     resolves and is reachable from the internet. Caddy requests and renews
+	#     the certificate automatically and needs outbound port 443.
+	#
+	# For the default of (2) self-signed, leave all of the above commented out.
+
+	encode zstd gzip
+
+	# Serve the built frontend and proxy the API.
+	root * /srv
+
+	# Strip the incoming Host so Express sees the internal origin, which keeps
+	# redirect and CORS behaviour predictable.
+	reverse_proxy app:3000 {
+		header_up -Host
+		header_up X-Real-IP {remote_host}
+	}
+
+	# Large enough for the biggest single JSON body the API accepts.
+	request_body {
+		max_size 25MB
+	}
+
+	header {
+		# Do not let a browser guess that the app is HTML-capable in a way that
+		# could enable content sniffing on a system holding patient data.
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Lets a browser reach the ACME challenge over plain HTTP when using a public
+# CA. Harmless on a LAN and required if you ever enable option (4).
+http://{$HMS_HOST:hms.hospital.internal} {
+	redir https://{host}{uri} permanent
+}
