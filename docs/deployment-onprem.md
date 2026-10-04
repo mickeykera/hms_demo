@@ -355,3 +355,75 @@ restore the backup instead — the old code will not understand the new schema.
 | `BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters` | Bootstrap refused a weak password. This is intended. |
 | Site loads but every API call 404s | `HMS_HOST` does not match DNS, so Caddy is serving for a different name. |
 | `429` for everyone at once | Rate limiting is per-proxy. Expected with `TRUST_PROXY` unset; see above. |
+
+---
+
+## Frontend network audit
+
+For the on-prem requirement that the UI must work on an isolated hospital LAN
+with no internet access, the built frontend bundle was audited for outbound
+network requests. **Result: none. The frontend makes no external requests.**
+
+### Method
+
+Checked five things: runtime network APIs in source, absolute external URLs in
+shipped source, webfont loading, analytics/telemetry dependencies, and the
+built `dist/` bundle (source alone can miss URLs injected by a dependency).
+
+### Findings
+
+| Check | Result |
+|---|---|
+| `fetch` / `XMLHttpRequest` / `axios` / `WebSocket` / `EventSource` in `frontend/src` | None. The only match was `IoT.jsx:39` — a `setInterval` calling React Query's `refetch()`, which hits our own API. |
+| Absolute external URLs in `frontend/src` | Only `http://www.w3.org/2000/svg` — an XML namespace declaration on inline SVG elements, not a fetch. |
+| Webfonts | None loaded. `@import "tailwindcss"` is the local npm package. `--font-sans: 'Inter', system-ui, -apple-system, sans-serif` — `Inter` is named but **never fetched**; there is no `@font-face` rule and no `fonts.googleapis.com` reference, so it silently falls back to `system-ui`. |
+| Analytics / telemetry / error reporting | None. No Sentry, Datadog, gtag, PostHog, Segment, Hotjar, FullStory or similar in `frontend/package.json`. |
+| `<script>` / `<link>` in `index.html` | Only the local `/favicon.svg` and the module entry point. No CDN, no third-party script, no external stylesheet. |
+| Hosts in the built `dist/` | `www.w3.org` (SVG namespaces), `tailwindcss.com` and `reactrouter.com` (strings inside error/warning messages, never requested), `react.dev` and `github.com` (React dev-mode warning text, absent from production builds), `localhost` (the `VITE_API_BASE` fallback). |
+
+The `dist` scan matters: an early grep for CDN hostnames produced a wall of
+false positives, because `cdn.` matched inside base64 `integrity` hashes in
+`package-lock.json`. Those are npm registry integrity checks at install time,
+not browser requests.
+
+### API base URL
+
+`frontend/src/services/api.js:3`
+
+```js
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
+```
+
+Relative in production. The on-prem compose setup is same-origin — Caddy
+serves the bundle and proxies `/api` to the app — so `VITE_API_BASE` does not
+need to be set and no absolute URL is ever embedded.
+
+### Implications for an air-gapped install
+
+The bundle loads and runs with no internet access. Two consequences:
+
+1. **The `Inter` font will not appear.** It is named in the font stack but has
+   no `@font-face` rule, so every browser uses its system sans-serif. This is
+   cosmetic. If a specific typeface is wanted on hospital workstations, ship
+   the `.woff2` in `frontend/public/fonts/` with an explicit `@font-face` —
+   self-hosted, not a CDN.
+2. **Production React dev warnings are absent**, because the dev-only warning
+   strings referencing `react.dev` and `github.com` are not in the production
+   bundle.
+
+### Re-running this audit
+
+```bash
+# Source-level
+grep -rnoE 'https?://[A-Za-z0-9._-]+' frontend/src frontend/index.html \
+  | grep -vE 'localhost|127\.0\.0\.1|w3\.org'
+
+# Built bundle, after npm --prefix frontend run build
+grep -rhoE 'https?://[A-Za-z0-9._-]+' frontend/dist | sort -u
+
+# Telemetry dependencies
+grep -inE 'analytics|sentry|gtag|hotjar|posthog|segment|mixpanel' frontend/package.json
+```
+
+Worth repeating after any dependency upgrade — a transitive package can
+introduce an external request that the source grep will not show.
