@@ -4,6 +4,11 @@ Running the HMS on a hospital LAN, behind the hospital's own DNS and
 certificates. The public demo on Render is not the target here -- see
 [Deployment profiles](#deployment-profiles) for how the two differ.
 
+For the install procedure and sign-off sheet, start with
+[install-checklist.md](./install-checklist.md). For what this system does and
+does not do about security, see
+[security-posture.md](./security-posture.md).
+
 ---
 
 ## Ports
@@ -341,6 +346,43 @@ docker compose up -d --build
 
 Only valid if no migration has since run against the data. If one has,
 restore the backup instead — the old code will not understand the new schema.
+
+---
+
+## Clean-VM acceptance test
+
+The checklist's final step is not a checklist item, it is a script. Run it on
+a host that has never run this application:
+
+```bash
+cp .env.example .env
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+scripts/onprem-smoke-test.sh
+# with the HTTPS check from the real hostname:
+scripts/onprem-smoke-test.sh --https https://hms.hospital.internal
+```
+
+It works under a throwaway compose project name (`hms-smoke-$$`) and never
+touches the live volume, so it is safe to re-run. It does build images and
+start containers, so keep it off the production host during working hours.
+
+| Check | What it proves |
+|---|---|
+| 1 | `docker-compose.yml` parses **and the app service publishes no host port**. Stops the run if the topology is wrong. |
+| 2 | The image builds and the app passes its healthcheck within 120s. |
+| 3 | Nothing is listening on host port 3000. |
+| 4 | The first administrator is created, a **second run refuses to create another**, a short password is refused, and exactly one admin exists afterwards. |
+| 5 | HTTPS returns 200 on `/api/health` and the served certificate is valid. Skipped unless `--https` is given, because it must be repeated from a second device. |
+| 6 | A backup archive is created, contains `hospital.db`, and restores into a **separate** volume that is then verified and removed. |
+| 7 | A rebuild-and-restart succeeds, the service returns healthy, and no migration is recorded twice. |
+
+Exit code is 0 only if every check passed.
+
+**Check 5 must be repeated by hand from a second device on the LAN.** The
+script can only see what the deploy host serves; it cannot tell you whether a
+*workstation* trusts the certificate, which is the thing that actually matters
+to staff. Open `https://<hms-host>` in a browser on a clinical workstation and
+confirm there is no certificate warning.
 
 ---
 
