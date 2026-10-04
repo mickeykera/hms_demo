@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import QueryErrorBanner from '../components/QueryErrorBanner';
 import { useDashboardTab } from '../hooks/useDashboardTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -30,9 +31,9 @@ function DispensingTab({ queue }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ prescription_id: '', medication_id: '', quantity: '', instructions: '' });
 
-  const { data: medications = [] } = useQuery({
+  const { data: medications = [], error: medicationsError } = useQuery({
     queryKey: ['pharmacy-medications'],
-    queryFn: () => api.get('/pharmacy/medications').then(r => r.data.medications || []).catch(() => []),
+    queryFn: () => api.get('/pharmacy/medications').then(r => r.data.medications || []),
     enabled: !!user?.id,
   });
 
@@ -54,6 +55,8 @@ function DispensingTab({ queue }) {
   });
 
   const canDispense = form.prescription_id && form.medication_id && Number(form.quantity) > 0 && !dispense.isPending;
+
+      <QueryErrorBanner sections={[{ label: 'medications', error: medicationsError }]} />
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -155,14 +158,14 @@ function DispensingTab({ queue }) {
 // Full stock view: every batch, plus low-stock and expiring counts.
 function PharmacyInventoryTab({ lowStock, expiring }) {
   const { user } = useAuth();
-  const { data: inventory = [] } = useQuery({
+  const { data: inventory = [], error: inventoryError } = useQuery({
     queryKey: ['pharmacy-inventory'],
-    queryFn: () => api.get('/pharmacy/inventory').then(r => r.data.inventory || []).catch(() => []),
+    queryFn: () => api.get('/pharmacy/inventory').then(r => r.data.inventory || []),
     enabled: !!user?.id,
   });
-  const { data: medications = [] } = useQuery({
+  const { data: medications = [], error: medicationsError } = useQuery({
     queryKey: ['pharmacy-medications'],
-    queryFn: () => api.get('/pharmacy/medications').then(r => r.data.medications || []).catch(() => []),
+    queryFn: () => api.get('/pharmacy/medications').then(r => r.data.medications || []),
     enabled: !!user?.id,
   });
 
@@ -170,6 +173,8 @@ function PharmacyInventoryTab({ lowStock, expiring }) {
     const m = medications.find(x => x.id === id);
     return m ? `${m.name} ${m.strength || ''}`.trim() : `Medication #${id}`;
   };
+
+      <QueryErrorBanner sections={[{ label: 'inventory', error: inventoryError }, { label: 'medications', error: medicationsError }]} />
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -227,14 +232,16 @@ function PharmacyInventoryTab({ lowStock, expiring }) {
 function PharmacySuppliersTab() {
   const { user } = useAuth();
   const [filter, setFilter] = useState('');
-  const { data: suppliers = [] } = useQuery({
+  const { data: suppliers = [], error: suppliersError } = useQuery({
     queryKey: ['procurement-suppliers'],
-    queryFn: () => api.get('/procurement/suppliers').then(r => r.data.suppliers || []).catch(() => []),
+    queryFn: () => api.get('/procurement/suppliers').then(r => r.data.suppliers || []),
     enabled: !!user?.id,
   });
   const rows = suppliers.filter(s =>
     !filter || `${s.name} ${s.contact_person || ''} ${s.email || ''}`.toLowerCase().includes(filter.toLowerCase())
   );
+      <QueryErrorBanner sections={[{ label: 'suppliers', error: suppliersError }]} />
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -314,25 +321,25 @@ export default function PharmacyDashboard() {
   const [activeTab, setActiveTab] = useDashboardTab('queue');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: prescriptionQueue = [] } = useQuery({
+  const { data: prescriptionQueue = [], error: prescriptionQueueError } = useQuery({
     queryKey: ['pharmacy-queue'],
     queryFn: () => api.get('/pharmacy/queue').then(r => r.data.queue || []),
     refetchInterval: 30000,
   });
 
-  const { data: lowStock = [] } = useQuery({
+  const { data: lowStock = [], error: lowStockError } = useQuery({
     queryKey: ['low-stock'],
     queryFn: () => api.get('/pharmacy/low-stock').then(r => r.data.low_stock || []),
     refetchInterval: 300000,
   });
 
-  const { data: expiring = [] } = useQuery({
+  const { data: expiring = [], error: expiringError } = useQuery({
     queryKey: ['expiring'],
     queryFn: () => api.get('/pharmacy/expiring').then(r => r.data.expiring_soon || []),
     refetchInterval: 300000,
   });
 
-  const { data: notifications = [] } = useQuery({
+  const { data: notifications = [], error: notificationsError } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: () => api.get('/notifications', { params: { unread: true } }).then(r => r.data.notifications || []),
     enabled: !!user?.id,
@@ -347,6 +354,8 @@ export default function PharmacyDashboard() {
     lowStock: lowStock.length || 0,
     expiring: expiring.length || 0,
   };
+
+      <QueryErrorBanner sections={[{ label: 'prescriptionQueue', error: prescriptionQueueError }, { label: 'lowStock', error: lowStockError }, { label: 'expiring', error: expiringError }, { label: 'notifications', error: notificationsError }]} />
 
   return (
     <div className="space-y-6">
