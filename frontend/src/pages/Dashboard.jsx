@@ -3,19 +3,35 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   Users, DollarSign, Calendar, FlaskConical, Bed,
-  Cpu, Scissors, Pill, Clock, AlertTriangle, CheckCircle, Stethoscope,
+  Cpu, Scissors, Pill, Stethoscope,
   Building2, Activity,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getColor } from '../utils/colorMap';
 
+// Every tile here reads a real endpoint. Three were removed rather than
+// re-scoped, because there was nothing real to scope them to:
+//
+//   'Unpaid Invoices'   was /billing/status/1 -- patient id 1, a hardcoded
+//                      guess at "whoever is first in the table". On a hospital
+//                      install that is a real patient's balance, shown to
+//                      whoever opens the dashboard.
+//   'Pending Lab Tests' was /lab/1 -- same problem.
+//   'Active IoT Devices' was the literal 5. The iot module exposes only
+//                      per-patient telemetry (/iot/:patientId); there is no
+//                      device-count endpoint at all.
+//
+// 'Occupied Beds' was also removed: it was computed as `10 - available`, where
+// the 10 was a hardcoded total. /ward/beds returns available beds only, with no
+// total, so occupancy was being derived from a fiction. The real per-ward
+// occupancy lives at /wards/stats/occupancy, which is restricted to
+// Admin/SuperAdmin/Doctor/Nurse -- and /dashboard is open to every role, so
+// wiring it here would hand other roles a 403. The tile now reports the figure
+// the endpoint can actually support.
 const statCards = [
-  { key: 'totalPatients', label: 'Total Patients', icon: Users, color: 'blue' },
+  { key: 'patientsWaiting', label: 'Patients Waiting', icon: Users, color: 'blue' },
   { key: 'pendingAppointments', label: 'Pending Appointments', icon: Calendar, color: 'orange' },
-  { key: 'unpaidInvoices', label: 'Unpaid Invoices', icon: DollarSign, color: 'red' },
-  { key: 'pendingLabTests', label: 'Pending Lab Tests', icon: FlaskConical, color: 'purple' },
-  { key: 'occupiedBeds', label: 'Occupied Beds', icon: Bed, color: 'green' },
-  { key: 'activeIoT', label: 'Active IoT Devices', icon: Cpu, color: 'indigo' },
+  { key: 'availableBeds', label: 'Available Beds', icon: Bed, color: 'green' },
 ];
 
 export default function Dashboard() {
@@ -25,20 +41,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [patients, appointments, billing, lab, ward] = await Promise.all([
+        const [queue, appointments, ward] = await Promise.all([
           api.get('/reception/queue/General').catch(() => ({ data: { waiting_patients: [] } })),
           api.get('/appointments', { params: { status: 'Scheduled' } }).catch(() => ({ data: { appointments: [] } })),
-          api.get('/billing/status/1').catch(() => ({ data: { total_outstanding: 0 } })),
-          api.get('/lab/1').catch(() => ({ data: { tests: [] } })),
           api.get('/ward/beds').catch(() => ({ data: { available_beds: [] } })),
         ]);
         setStats({
-          totalPatients: patients.data.waiting_patients.length || 0,
+          patientsWaiting: queue.data.waiting_patients.length || 0,
           pendingAppointments: appointments.data.appointments.length || 0,
-          unpaidInvoices: billing.data.total_outstanding || 0,
-          pendingLabTests: lab.data.tests.filter(t => t.test.status !== 'Completed').length || 0,
-          occupiedBeds: 10 - (ward.data.available_beds.length || 0),
-          activeIoT: 5,
+          availableBeds: ward.data.available_beds.length || 0,
         });
       } catch (e) {
         console.error('Failed to fetch stats:', e);
@@ -115,34 +126,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Alerts */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Alerts</h2>
-          </div>
-          <div className="card-body">
-            <div className="space-y-3">
-              {[
-                { type: 'warning', message: '3 lab tests overdue', time: '10 min ago' },
-                { type: 'info', message: '2 beds need cleaning', time: '25 min ago' },
-                { type: 'success', message: 'Invoice INV-ABC123 paid', time: '1 hour ago' },
-                { type: 'warning', message: 'IoT device HRM-001 offline', time: '2 hours ago' },
-              ].map((alert, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className={`p-2 rounded-full ${alert.type === 'warning' ? 'bg-yellow-100' : alert.type === 'success' ? 'bg-green-100' : 'bg-blue-100'}`}>
-                    {alert.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-600" />}
-                    {alert.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
-                    {alert.type === 'info' && <Clock className="w-5 h-5 text-blue-600" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">{alert.message}</p>
-                    <p className="text-xs text-gray-500 mt-1">{alert.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Recent Alerts.
+            This panel was removed. It rendered a hardcoded array of four fake
+            alerts -- "3 lab tests overdue", "Invoice INV-ABC123 paid", "IoT
+            device HRM-001 offline" with invented timestamps. On a hospital
+            dashboard that is fabricated clinical and financial activity, and it
+            reads as real. There is no alerts endpoint to replace it with, so
+            the honest option was to remove it rather than leave it or wire it
+            to something unrelated. A real alerts feed needs its own backend
+            work -- see the security-posture "what does not exist" list.
+        */}
       </div>
 
       {/* Module Access */}
