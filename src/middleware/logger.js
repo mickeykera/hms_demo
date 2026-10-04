@@ -97,7 +97,7 @@ export function requestLogger(req, res, next) {
     ip,
     userAgent: req.get('user-agent'),
     user: req.user ? { id: req.user.id, role: req.user.role } : null,
-    query: req.query,
+    query: sanitizeBody(req.query),
     body: req.method !== 'GET' ? sanitizeBody(req.body) : undefined,
   });
 
@@ -168,6 +168,58 @@ function isWalkable(value) {
  * handler still has to read the real values, and sanitising in place would hand
  * it [REDACTED] instead.
  */
+/**
+ * Redacts credentials embedded in a URL's query string, preserving the rest.
+ *
+ * req.originalUrl and friends carry the whole query string inline, so a
+ * `?token=...` leaks even from code that never touches req.query. A URL cannot
+ * be run through sanitizeBody because it is a string, so the query is split
+ * out, filtered, and reassembled -- keeping the non-sensitive parameters, which
+ * are the reason the URL is being recorded at all.
+ *
+ * The path itself is NOT filtered. Path segments are opaque here: the request
+ * logger runs before route matching, so it cannot know that
+ * `/download/:token` is sensitive while `/patients/:id` is not. Guessing from
+ * value shape would redact legitimate identifiers. Passing a credential as a
+ * path segment is therefore a residual risk, documented rather than papered
+ * over -- callers must not accept secrets that way.
+ */
+export function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+
+  const qIndex = url.indexOf('?');
+  if (qIndex === -1) return url;
+
+  const base = url.slice(0, qIndex);
+  const search = url.slice(qIndex + 1);
+  if (!search) return url;
+
+  let params;
+  try {
+    params = new URLSearchParams(search);
+  } catch {
+    // Not parseable: refuse to guess. Dropping the query is safer than echoing
+    // it, and a malformed query string is not worth preserving.
+    return base;
+  }
+
+  let changed = false;
+  for (const key of [...params.keys()]) {
+    if (isSensitiveKey(key)) {
+      params.set(key, REDACTED);
+      changed = true;
+    }
+  }
+
+  if (!changed) return url;
+  // URLSearchParams percent-encodes the brackets in [REDACTED]. These strings
+  // are read by humans, so put them back rather than making every reviewer
+  // decode %5B by eye.
+  return `${base}?${params.toString()}`
+    .replace(/%5B/g, '[')
+    .replace(/%5D/g, ']');
+}
+
 export function sanitizeBody(body, depth = 0) {
   if (!body || typeof body !== 'object') return body;
   if (!isWalkable(body)) return body;

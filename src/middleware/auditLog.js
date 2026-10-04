@@ -1,12 +1,18 @@
 import { getDb, createAuditLog } from '../models/index.js';
-import { sanitizeBody } from './logger.js';
+import { sanitizeBody, sanitizeUrl } from './logger.js';
 
-// Both audit sinks below serialise the request body into audit_logs.details,
-// which is a database row that outlives the request and is readable by anyone
-// with audit access. Without redaction a password sent to a logged route would
-// be persisted in cleartext -- so the same sanitizer the request logger uses
-// applies here. Previously the body was stored raw, which meant this column
-// could hold credentials if any route was ever wired to it with one.
+// All three sinks below serialise parts of the request into audit_logs.details,
+// a database row that outlives the request and is readable by anyone with audit
+// access. Two distinct leaks are closed here:
+//
+//   - the BODY goes through sanitizeBody, so a password anywhere in it is
+//     redacted. auditMiddleware previously stored it raw.
+//   - the URL and QUERY go through sanitizeUrl/sanitizeBody. originalUrl embeds
+//     the entire query string inline, so a ?token= would be recorded even by
+//     code that never reads req.query.
+//
+// Without redaction a password sent to an audited route would be persisted in
+// cleartext for the life of the install.
 
 export function auditLog(action, resourceType, resourceId = null, details = null) {
   return (req, res, next) => {
@@ -62,11 +68,11 @@ export function createDetailedAuditLog(req, action, resourceType, resourceId, be
   try {
     const db = getDb();
     const auditDetails = {
-      ...details,
-      before: beforeState,
-      after: afterState,
+      ...sanitizeBody(details || {}),
+      before: sanitizeBody(beforeState),
+      after: sanitizeBody(afterState),
       method: req.method,
-      url: req.originalUrl,
+      url: sanitizeUrl(req.originalUrl),
       userAgent: req.get('User-Agent'),
     };
     
@@ -105,9 +111,9 @@ export function auditMiddleware() {
             resource_id: resourceId,
             details: JSON.stringify({
               method: req.method,
-              url: req.originalUrl,
-              body: req.body,
-              query: req.query,
+              url: sanitizeUrl(req.originalUrl),
+              body: sanitizeBody(req.body),
+              query: sanitizeBody(req.query),
             }),
             ip_address: req.ip || req.connection?.remoteAddress,
           });

@@ -71,6 +71,24 @@ const NESTED_CANARY_VALUES = [
 ];
 
 /**
+ * Credentials delivered in the URL rather than the body.
+ *
+ * A query string is the easiest place to leak one by accident: it also ends up
+ * in browser history, proxy logs and Referer headers, and anything that
+ * records the request line captures it wholesale.
+ */
+const QUERY_CANARY = {
+  token: 'Q4uery-T0ken-Ww33',
+  api_key: 'Q4uery-ApiKey-Xx44',
+  password: 'Q4uery-Passw0rd-Yy55',
+  clientSecret: 'Q4uery-S3cret-Zz66',
+  'access-token': 'Q4uery-AccessToken-Aa77',
+  apiKey: 'Q4uery-ApiKey-Bb88',
+};
+
+const NON_SENSITIVE_QUERY = { page: '3', limit: '50', sort: 'name' };
+
+/**
  * Every route in the app, with its full mount path.
  *
  * Express 5 does not keep a router layer's mount path on the layer: `path` is
@@ -203,7 +221,11 @@ describe('No credential ever reaches a log sink', () => {
 
   it('should not persist a credential into the audit trail', async () => {
     const { routes } = enumerateRoutes();
-    cleanupTestDb();
+    // Clear audit_logs explicitly: cleanupTestDb() deletes users but NOT
+    // audit_logs, so rows written by an earlier test (or an earlier run of this
+    // file, since the test database is a persistent file) would otherwise be
+    // scanned here and attributed to this test.
+    getTestDb().exec('DELETE FROM audit_logs');
 
     for (const route of routes) {
       if (route.method === 'GET') continue;
@@ -347,5 +369,123 @@ describe('No credential ever reaches a log sink', () => {
     expect(elapsed, 'sanitizing a deeply nested body must be fast').toBeLessThan(1000);
     // It must still have logged something rather than silently bailing out.
     expect(logged.length).toBeGreaterThan(0);
+  });
+
+  it('should redact a credential passed in the query string', async () => {
+    // Live sink: the [REQUEST] line records req.query on every single request,
+    // so a ?token= or ?api_key= lands in the log file in cleartext.
+    const search = new URLSearchParams({ ...QUERY_CANARY, ...NON_SENSITIVE_QUERY }).toString();
+
+    const logged = [];
+    for (const method of ['log', 'warn', 'error']) {
+      vi.spyOn(console, method).mockImplementation((...args) => logged.push(args));
+    }
+
+    await request(app).get(`/api/health?${search}`);
+    vi.restoreAllMocks();
+
+    const serialised = JSON.stringify(logged);
+    const escaped = Object.entries(QUERY_CANARY)
+      .filter(([, value]) => serialised.includes(value))
+      .map(([field, value]) => `${field} -> ${value}`);
+
+    expect(
+      escaped,
+      `query-string credentials reached the log:\n${escaped.join('\n')}`
+    ).toEqual([]);
+  });
+
+  it('should still log non-sensitive query parameters', async () => {
+    // Redaction must not blind the log: page/limit/sort are the reason the
+    // query is logged at all, and losing them makes the line useless.
+    const logged = [];
+    vi.spyOn(console, 'log').mockImplementation((...args) => logged.push(args));
+
+    await request(app).get('/api/health?token=REDACTME-TOKEN-999&page=3&limit=50');
+    vi.restoreAllMocks();
+
+    const serialised = JSON.stringify(logged);
+    expect(serialised, 'page should survive').toContain('page');
+    expect(serialised, 'limit should survive').toContain('limit');
+    expect(serialised, 'token value must not survive').not.toContain('REDACTME-TOKEN-999');
+  });
+
+  it('should redact credentials recorded by the audit sinks', async () => {
+    const { auditLog, auditMiddleware, createDetailedAuditLog } = await import(
+      '../src/middleware/auditLog.js'
+    );
+
+    // Start from a clean slate deliberately rather than trusting cleanupTestDb:
+    // it deletes users but NOT audit_logs, so leftover rows from an earlier test
+    // would satisfy a naive "rows exist" assertion while these sinks silently
+    // wrote nothing. An earlier draft of this test passed for exactly that
+    // reason -- the inserts failed on a foreign key and it scanned stale rows.
+    const db = getTestDb();
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('DELETE FROM audit_logs');
+    db.exec('DELETE FROM users');
+    db.exec('PRAGMA foreign_keys = ON');
+
+    // audit_logs.actor_id is a foreign key, so the actor must really exist or
+    // every insert below fails and the test proves nothing.
+    db.prepare(
+      "INSERT INTO users (username, password_hash, full_name, role, department) VALUES ('audit.probe','x','Audit Probe','SuperAdmin','Administration')"
+    ).run();
+    const actorId = db.prepare("SELECT id FROM users WHERE username = 'audit.probe'").get().id;
+
+    // Each audit sink writes audit_logs.details, a database row that outlives
+    // the request. They record req.query and req.originalUrl, and originalUrl
+    // embeds the whole query string, so a credential arrives twice over.
+    const mkReq = () => ({
+      user: { id: actorId, role: 'SuperAdmin' },
+      method: 'POST',
+      baseUrl: '/api/probe',
+      params: {},
+      body: { id: 1, name: 'ok', password: CANARY.password },
+      query: { ...QUERY_CANARY, ...NON_SENSITIVE_QUERY },
+      originalUrl: `/api/probe?${new URLSearchParams({ ...QUERY_CANARY, ...NON_SENSITIVE_QUERY })}`,
+      ip: '10.0.0.5',
+      connection: { remoteAddress: '10.0.0.5' },
+      get: () => 'probe-agent',
+    });
+
+    // auditLog and auditMiddleware wrap res.send
+    for (const factory of [auditLog, auditMiddleware]) {
+      const req = mkReq();
+      const res = { statusCode: 200, send() {} };
+      factory('PROBE', 'probe')(req, res, () => {});
+      res.send({ ok: true });
+    }
+
+    // createDetailedAuditLog writes directly
+    createDetailedAuditLog(mkReq(), 'PROBE', 'probe', 1, null, null, null);
+
+    // Only this test's rows, and all three sinks must have produced one.
+    // Filtered on resource_type, not action: auditMiddleware derives `action`
+    // from the HTTP verb (CREATE/UPDATE/DELETE) rather than taking the passed
+    // action, so an action='PROBE' filter silently skipped it.
+    const rows = db
+      .prepare("SELECT details FROM audit_logs WHERE resource_type = 'probe' AND details IS NOT NULL")
+      .all();
+
+    expect(rows.length, 'all three audit sinks should have written a row').toBe(3);
+
+    const leaked = [];
+    for (const row of rows) {
+      for (const [field, value] of Object.entries(QUERY_CANARY)) {
+        if (row.details.includes(value)) {
+          leaked.push(`audit_logs.details leaked query "${field}"`);
+        }
+      }
+      // The body must be sanitised here too: auditMiddleware recorded it raw.
+      if (row.details.includes(CANARY.password)) {
+        leaked.push('audit_logs.details leaked the request body');
+      }
+    }
+
+    expect(
+      leaked,
+      `audit sinks recorded credentials:\n${leaked.join('\n')}`
+    ).toEqual([]);
   });
 });
